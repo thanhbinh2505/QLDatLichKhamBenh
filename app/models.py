@@ -50,9 +50,9 @@ class BenhNhan(BaseModel):
 
     user_id = Column(Integer, ForeignKey('user.id'),unique=True, nullable=False)
 
-    ngaySinh = Column(Date, nullable=False)
-    diaChi = Column(String(50), nullable=False)
-    soLanHuyTrongTuan= Column(Integer,default = 0, nullable=False)
+    ngaySinh = Column(Date, nullable=True)
+    diaChi = Column(String(50), nullable=True)
+    soLanHuyTrongTuan= Column(Integer,default = 0)
     thoiGianMoKhoa = Column(DateTime, nullable=True)
 
     user = relationship('User', backref='Benhnhan', uselist=False)
@@ -76,7 +76,6 @@ class LichLamViec(BaseModel):
     __tablename__ = 'lichlamviec'
 
     bacsi_id = Column(Integer, ForeignKey('bacsi.id'), nullable=False)
-
     ngayLamViec = Column(Date, nullable=False)
 
     bac_si = relationship('BacSi', backref='LichLamViec', lazy=True)
