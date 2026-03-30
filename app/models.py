@@ -44,6 +44,9 @@ class User(UserMixin, BaseModel):
         return self.username
     def set_password(self, password: str):
         self.password = generate_password_hash(password)
+    def check_password(self, password: str):
+        return check_password_hash(self.password, password)
+
 
 class BenhNhan(BaseModel):
     __tablename__ = 'benhnhan'
@@ -108,13 +111,24 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
 
-        u_admin = User(
-            username= "admin",
+        # u_admin = User(
+        #     username= "admin",
+        #     hoTen="Nguyễn Thanh Bình",
+        #     email="thanhbinhlb2505@gmail.com",
+        #     gioiTinh=True,
+        #     role=UserRole.ADMIN
+        # )
+        # u_admin.set_password('123456')
+        # db.session.add(u_admin)
+        # db.session.commit()
+
+        u_bacsi = User(
+            username="bacsi1",
             hoTen="Nguyễn Thanh Bình",
-            email="thanhbinhlb2505@gmail.com",
+            email="thanhbinh2505@gmail.com",
             gioiTinh=True,
-            role=UserRole.ADMIN
+            role=UserRole.BACSI
         )
-        u_admin.set_password('123456')
-        db.session.add(u_admin)
+        u_bacsi.set_password('123456')
+        db.session.add(u_bacsi)
         db.session.commit()
