@@ -1,10 +1,9 @@
-import traceback
 
 from app import app, db
 from app.models import User, BenhNhan
-from functools import wraps
+
 import json
-import os
+
 import hashlib
 
 def tao_user(username, hoten, email, gioitinh, password, role):
@@ -12,9 +11,10 @@ def tao_user(username, hoten, email, gioitinh, password, role):
                 hoTen=hoten,
                 email=email,
                 gioiTinh=gioitinh,
-                password=str(hashlib.md5(password.strip().encode("utf-8")).hexdigest()),
                 role=role
                 )
+    user.set_password(password)
+
     db.session.add(user)
     db.session.flush()
 
@@ -35,6 +35,14 @@ def them_benhnhan(username, hoten, email, gioitinh, password, role, ngaysinh=Non
         return benhnhan
 
     except Exception as e:
-        print(e)
         db.session.rollback()
         return None
+
+def auth_user(username, password):
+    u = User.query.filter(User.username.__eq__(username)).first()
+    if u and u.check_password(password):
+        return u
+    return None
+
+def get_user_by_id(id):
+    return User.query.get(id)
