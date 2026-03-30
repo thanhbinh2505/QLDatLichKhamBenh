@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{%block title%}Trang chủ{%endblock%}</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#1d4ed8', /* Medical Blue - blue-700 */
+                        primaryHover: '#1e40af', /* blue-800 */
+                        secondary: '#0d9488', /* Teal / Light Green - teal-600 */
+                        lightBg: '#f8fafc', /* slate-50 */
+                        darkBg: '#0f172a', /* slate-900 */
+                        'medical-blue': '#1D4ED8', // blue-700
+                        'medical-blue-hover': '#1E3A8A', // blue-900
+                        'medical-blue-light': '#EFF6FF', // blue-50
+                    },
+                    boxShadow: {
+                        'soft': '0 10px 40px -10px rgba(29, 78, 216, 0.15)',
+                        'btn': '0 8px 20px -6px rgba(29, 78, 216, 0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Tùy chỉnh thanh cuộn cho danh sách bác sĩ */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        html { scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="font-sans text-gray-800 antialiased bg-white">
+{%block header%}
+{%include 'layout/header.html'%}
+{%endblock%}
+
+{%block content required%}
+{%endblock%}
+
+{%block footer%}
+{%include 'layout/footer.html'%}
+{%endblock%}
+</body>
+</html>
