@@ -1,15 +1,18 @@
+import datetime
 
 from app import db, app
-from sqlalchemy import Integer, String, Boolean, ForeignKey, Enum, DateTime
+from sqlalchemy import Integer, String, Boolean, ForeignKey, Enum, Column,DateTime, Date, Time
 from enum import Enum as RoleEnum, unique
 from flask_login import UserMixin
-import hashlib
+
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm import relationship, backref
 
+
+
 class BaseModel(db.Model):
     __abstract__ = True
-    id = db.Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
 
 class UserRole(RoleEnum):
     ADMIN = 1
@@ -25,13 +28,13 @@ class Status(RoleEnum):
 class User(UserMixin, BaseModel):
     __tablename__ = 'user'
 
-    username = db.Column(String(20), unique=True, nullable=False)
-    hoTen = db.Column(db.String(50), nullable=False)
+    username = Column(String(20), unique=True, nullable=False)
+    hoTen = Column(String(50), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     gioiTinh = db.Column(Boolean, nullable=False)
-    password = db.Column(db.String(255), nullable=False)
+    password = Column(String(255), nullable=False)
 
-    role = db.Column(Enum(UserRole), nullable=False)
+    role = Column(Enum(UserRole), nullable=False)
 
     def __str__(self):
         return self.username
@@ -45,51 +48,59 @@ class User(UserMixin, BaseModel):
 class BenhNhan(BaseModel):
     __tablename__ = 'benhnhan'
 
+    user_id = Column(Integer, ForeignKey('user.id'),unique=True, nullable=False)
 
-    ngaySinh = db.Column(db.Date, nullable=True)
-    diaChi = db.Column(db.String(50), nullable=True)
-    soLanHuyTrongTuan= db.Column(Integer, default=0)
-    thoiGianMoKhoa = db.Column(db.DateTime, nullable=True)
+    ngaySinh = Column(Date, nullable=True)
+    diaChi = Column(String(50), nullable=True)
+    soLanHuyTrongTuan= Column(Integer,default = 0)
+    thoiGianMoKhoa = Column(DateTime, nullable=True)
 
-    user_id = db.Column(Integer, ForeignKey('user.id'), nullable=False)
-    phieu_dat_lich = relationship('PhieuDatLich', backref='BenhNhan', lazy=True)
+    user = relationship('User', backref='Benhnhan', uselist=False)
 
 
 class BacSi(BaseModel):
     __tablename__ = 'bacsi'
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.id'),unique=True)
 
-    chuyenKhoa = db.Column(db.String(100), nullable=False)
-    trangThai = db.Column(db.Boolean, default=True)
+    chuyenKhoa = Column(String(100), nullable=False)
+    trangThai = Column(Boolean, default=True)
 
-    khung_gio = relationship('KhungGio', backref='BacSi', lazy=True)
+    user = relationship('User', backref='bacsi_profile', uselist=False)
 
 class Admin(BaseModel):
     __tablename__ = 'admin'
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.id'),unique=True)
+    user = relationship('User', backref='admin_profile', uselist=False)
 
-class KhungGio(BaseModel):
-    __tablename__ = 'khunggio'
+class LichLamViec(BaseModel):
+    __tablename__ = 'lichlamviec'
 
-    date = db.Column(db.Date, nullable=False)
-    startTime = db.Column(db.Time, nullable=False)
-    endTime = db.Column(db.Time, nullable=False)
-    isBooked = db.Column(db.Boolean, default=False)
+    bacsi_id = Column(Integer, ForeignKey('bacsi.id'), nullable=False)
+    ngayLamViec = Column(Date, nullable=False)
 
-    bacsi_id = db.Column(db.Integer, db.ForeignKey('bacsi.id'), nullable=False)
-
-    phieu_dat_lich = db.relationship('PhieuDatLich', backref='khunggio', uselist=False, lazy=True)
+    bac_si = relationship('BacSi', backref='LichLamViec', lazy=True)
 
 class PhieuDatLich(BaseModel):
     __tablename__ = 'phieudatlich'
 
-    ngayTaoPhieu = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.Enum(Status), default=Status.Scheduled)
+    benhnhan_id = Column(Integer, ForeignKey('benhnhan.id'), nullable=False)
+    khunggio_id = Column(db.Integer, db.ForeignKey('khunggio.id'),unique=True, nullable=False)
 
-    benhNhan_id = db.Column(Integer, ForeignKey('benhnhan.id'), nullable=False)
-    khungGio_id = db.Column(db.Integer, db.ForeignKey('khunggio.id'), nullable=False)
-    def get_status(self):
-        return self.status
+    ngayTaoPhieu = Column(DateTime,default=datetime.datetime.now, nullable=False)
+    status = Column(Enum(Status), default=Status.Scheduled,nullable=False)
+
+    benh_nhan = relationship('BenhNhan', backref='PhieuDatLich', lazy=True)
+    khung_gio = relationship('KhungGio', backref='PhieuDatLich', lazy=True)
+
+class KhungGio(BaseModel):
+    __tablename__ = 'khunggio'
+
+    lich_id = Column(Integer, ForeignKey('lichlamviec.id'), nullable=False)
+
+    startTime = Column(Time, nullable=False)
+    endTime = Column(Time, nullable=False)
+
+    lich_lam_viec = relationship('LichLamViec', backref='KhungGio', lazy=True)
 
 
 
