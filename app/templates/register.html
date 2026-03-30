@@ -1,0 +1,287 @@
+{%extends 'layout/base.html'%}
+
+{%block title%}Đăng Kí{%endblock%}
+
+{%block header%}
+{%endblock%}
+
+{%block footer%}
+{%endblock%}
+
+{%block content%}
+<style>
+    /* Tùy chỉnh thanh cuộn cho mượt mà */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Ẩn icon lịch mặc định của input date trên một số trình duyệt để dùng icon custom */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        cursor: pointer;
+    }
+</style>
+<div lass="bg-gray-50 font-sans text-gray-800 antialiased overflow-hidden">
+    <div class="flex h-screen w-full">
+
+        <div class="hidden lg:flex lg:w-[40%] relative bg-medical-700 overflow-hidden flex-col justify-center items-center p-12">
+            <!-- Hình ảnh nền -->
+            <img src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+                 alt="Gia đình khỏe mạnh"
+                 class="absolute inset-0 w-full h-full object-cover z-0" />
+
+            <!-- Lớp phủ Gradient Xanh mờ -->
+            <div class="absolute inset-0 bg-gradient-to-br from-medical-700/90 to-medical-500/60 mix-blend-multiply z-10"></div>
+
+            <!-- Logo -->
+            <div class="absolute top-8 left-8 z-20 flex items-center gap-2 text-white">
+                <div class="bg-white p-2 rounded-lg">
+                    <i data-lucide="activity" class="text-medical-600 w-6 h-6"></i>
+                </div>
+                <span class="text-xl font-bold tracking-tight">MediCare<span class="text-blue-200">+</span></span>
+            </div>
+
+            <!-- Nội dung thông điệp -->
+            <div class="relative z-20 text-center max-w-md text-white mt-12">
+                <div class="bg-white/20 p-4 rounded-full inline-block mb-6 backdrop-blur-sm">
+                    <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
+                </div>
+                <h2 class="text-3xl font-bold mb-4 leading-tight">Gia nhập cùng chúng tôi.</h2>
+                <p class="text-lg text-blue-100/90">Quản lý sức khỏe toàn diện cho bạn và gia đình chỉ với vài thao tác đơn giản.</p>
+            </div>
+
+            <!-- Họa tiết trang trí -->
+            <div class="absolute -bottom-24 -left-24 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl z-10"></div>
+            <div class="absolute top-1/4 -right-24 w-64 h-64 bg-medical-400 opacity-20 rounded-full blur-3xl z-10"></div>
+        </div>
+
+        <!-- ================= KHỐI FORM ĐĂNG KÝ (60% BÊN PHẢI) ================= -->
+        <div class="w-full lg:w-[60%] h-full bg-white overflow-y-auto flex justify-center p-6 sm:p-12 md:p-16 relative">
+
+            <!-- Nút quay lại (Dành cho Mobile) -->
+            <a href="#" class="lg:hidden absolute top-6 left-6 flex items-center text-sm font-medium text-gray-500 hover:text-medical-600 transition-colors">
+                <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i> Quay lại
+            </a>
+
+            <div class="w-full max-w-xl m-auto py-8">
+
+                <!-- Header Form -->
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">Tạo tài khoản mới</h1>
+                    <p class="text-gray-500 text-sm">Vui lòng điền thông tin dưới đây để thiết lập hồ sơ bệnh án điện tử của bạn.</p>
+                </div>
+
+                <form method="post" id="registrationForm" class="space-y-6">
+
+                    {% if err_msg %}
+                    <div class="rounded-lg bg-red-50 p-4 border border-red-200 shadow-sm">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <i data-lucide="alert-circle" class="h-5 w-5 text-red-500"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">
+                                    Có lỗi xảy ra!
+                                </h3>
+                                <div class="mt-1 text-sm text-red-700">
+                                    <p>{{ err_msg }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- 1. KHU VỰC THÔNG TIN BẮT BUỘC -->
+                    <div class="space-y-5">
+
+                        <!-- Hàng 1: Tên đăng nhập & Họ tên -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <!-- Tên đăng nhập -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Tên đăng nhập <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i data-lucide="user" class="w-5 h-5 text-gray-400"></i>
+                                    </div>
+                                    <input type="text" required
+                                           name="username"
+                                           class="pl-10 block w-full rounded-lg border border-gray-300 bg-white py-2.5 px-3 text-gray-900 focus:border-medical-500 focus:outline-none focus:ring-1 focus:ring-medical-500 transition-shadow sm:text-sm"
+                                           placeholder="Nhập tên đăng nhập">
+                                </div>
+                            </div>
+
+                            <!-- Họ và tên -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Họ và tên <span class="text-red-500">*</span>
+                                </label>
+                                <input type="text" required
+                                       name="hoten"
+                                       class="block w-full rounded-lg border border-gray-300 bg-white py-2.5 px-3 text-gray-900 focus:border-medical-500 focus:outline-none focus:ring-1 focus:ring-medical-500 transition-shadow sm:text-sm"
+                                       placeholder="Nguyễn Văn A">
+                            </div>
+                        </div>
+
+                        <!-- Hàng 2: Email -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Email <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i data-lucide="mail" class="w-5 h-5 text-gray-400"></i>
+                                </div>
+                                <input type="email" required
+                                       name="email"
+                                       class="pl-10 block w-full rounded-lg border border-gray-300 bg-white py-2.5 px-3 text-gray-900 focus:border-medical-500 focus:outline-none focus:ring-1 focus:ring-medical-500 transition-shadow sm:text-sm placeholder-gray-400"
+                                       placeholder="nguyenvana@gmail.com">
+                            </div>
+                        </div>
+
+                        <!-- Hàng 3: Mật khẩu & Giới tính -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <!-- Mật khẩu -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Mật khẩu <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i data-lucide="lock" class="w-5 h-5 text-gray-400"></i>
+                                    </div>
+                                    <input type="password" id="password" required
+                                           name="password"
+                                           class="pl-10 pr-10 block w-full rounded-lg border border-gray-300 bg-white py-2.5 px-3 text-gray-900 focus:border-medical-500 focus:outline-none focus:ring-1 focus:ring-medical-500 transition-shadow sm:text-sm"
+                                           placeholder="••••••••">
+                                    <!-- Nút ẩn/hiện mật khẩu -->
+                                    <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                                        <i data-lucide="eye" id="eyeIcon" class="w-5 h-5"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Giới tính -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Giới tính <span class="text-red-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <select required
+                                            name="gioitinh"
+                                            class="appearance-none block w-full rounded-lg border border-gray-300 bg-white py-2.5 px-3 text-gray-900 focus:border-medical-500 focus:outline-none focus:ring-1 focus:ring-medical-500 transition-shadow sm:text-sm">
+                                        <option value="" disabled selected>Chọn giới tính</option>
+                                        <option value="male">Nam</option>
+                                        <option value="female">Nữ</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                        <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Đường phân cách -->
+                    <div class="relative py-4">
+                        <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                            <div class="w-full border-t border-gray-200"></div>
+                        </div>
+                        <div class="relative flex justify-center">
+                            <span class="bg-white px-3 text-sm font-medium text-gray-400">
+                                Thông tin bổ sung (Không bắt buộc)
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 2. KHU VỰC THÔNG TIN TÙY CHỌN -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <!-- Ngày sinh -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1 text-gray-500">
+                                Ngày sinh <span class="text-xs font-normal">(Tùy chọn)</span>
+                            </label>
+                            <div class="relative relative-date">
+                                <input type="date"
+                                       name="ngaysinh"
+                                       class="block w-full rounded-lg border border-gray-300 bg-white py-2.5 px-3 text-gray-900 focus:border-medical-500 focus:outline-none focus:ring-1 focus:ring-medical-500 transition-shadow sm:text-sm relative z-10 bg-transparent">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none z-0">
+                                    <i data-lucide="calendar" class="w-5 h-5 text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Địa chỉ -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1 text-gray-500">
+                                Địa chỉ <span class="text-xs font-normal">(Tùy chọn)</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i data-lucide="map-pin" class="w-5 h-5 text-gray-400"></i>
+                                </div>
+                                <input type="text"
+                                       name="diachi"
+                                       class="pl-10 block w-full rounded-lg border border-gray-300 bg-white py-2.5 px-3 text-gray-900 focus:border-medical-500 focus:outline-none focus:ring-1 focus:ring-medical-500 transition-shadow sm:text-sm"
+                                       placeholder="Quận/Huyện, Tỉnh/TP">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. ĐIỀU KHOẢN & HÀNH ĐỘNG -->
+                    <div class="pt-2">
+                        <!-- Checkbox Điều khoản -->
+                        <div class="flex items-start mb-6">
+                            <div class="flex h-5 items-center">
+                                <input id="termsCheckbox" type="checkbox"
+                                       class="h-4 w-4 rounded border-gray-300 text-medical-600 focus:ring-medical-600 cursor-pointer accent-medical-600 transition-colors">
+                            </div>
+                            <div class="ml-3 text-sm">
+                                <label for="termsCheckbox" class="text-gray-600 cursor-pointer select-none">
+                                    Tôi đồng ý với
+                                    <a href="#" class="font-medium text-medical-600 underline hover:text-medical-700">Điều khoản dịch vụ</a> và
+                                    <a href="#" class="font-medium text-medical-600 underline hover:text-medical-700">Chính sách bảo mật</a> của phòng khám.
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Nút Submit -->
+                        <button type="submit" id="submitBtn" disabled
+                                class="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-medical-600 hover:bg-medical-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-medical-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                            Đăng ký tài khoản
+                            <i data-lucide="arrow-right" class="w-4 h-4 ml-2"></i>
+                        </button>
+                    </div>
+
+                </form>
+
+                <!-- 4. CHUYỂN HƯỚNG ĐĂNG NHẬP -->
+                <p class="mt-8 text-center text-sm text-gray-500">
+                    Bạn đã có tài khoản?
+                    <a href="#" class="font-bold text-medical-600 hover:text-medical-700 hover:underline transition-colors">Đăng nhập tại đây</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/register.js') }}"></script>
+
+{%endblock%}

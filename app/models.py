@@ -45,16 +45,17 @@ class User(UserMixin, BaseModel):
 class BenhNhan(BaseModel):
     __tablename__ = 'benhnhan'
 
-    ngaySinh = db.Column(db.Date, nullable=False)
-    diaChi = db.Column(db.String(50), nullable=False)
-    soLanHuyTrongTuan= db.Column(Integer, nullable=False)
-    thoiGianMoKhoa = db.Column(db.DateTime, nullable=False)
+
+    ngaySinh = db.Column(db.Date, nullable=True)
+    diaChi = db.Column(db.String(50), nullable=True)
+    soLanHuyTrongTuan= db.Column(Integer, default=0)
+    thoiGianMoKhoa = db.Column(db.DateTime, nullable=True)
 
     user_id = db.Column(Integer, ForeignKey('user.id'), nullable=False)
-    phieu_dat_lich = relationship('PhieuDatLich', backref='BanhNhan', lazy=True)
+    phieu_dat_lich = relationship('PhieuDatLich', backref='BenhNhan', lazy=True)
 
 
-class BacSi(User):
+class BacSi(BaseModel):
     __tablename__ = 'bacsi'
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
 
@@ -63,7 +64,7 @@ class BacSi(User):
 
     khung_gio = relationship('KhungGio', backref='BacSi', lazy=True)
 
-class Admin(User):
+class Admin(BaseModel):
     __tablename__ = 'admin'
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
 
@@ -75,7 +76,7 @@ class KhungGio(BaseModel):
     endTime = db.Column(db.Time, nullable=False)
     isBooked = db.Column(db.Boolean, default=False)
 
-    bacsi_id = db.Column(db.Integer, db.ForeignKey('bacsi.user_id'), nullable=False)
+    bacsi_id = db.Column(db.Integer, db.ForeignKey('bacsi.id'), nullable=False)
 
     phieu_dat_lich = db.relationship('PhieuDatLich', backref='khunggio', uselist=False, lazy=True)
 
