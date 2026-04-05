@@ -7,7 +7,8 @@ from app.models import UserRole
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    doctors = dao.get_list_doctor()
+    return render_template('index.html', doctors=doctors)
 
 @app.route('/admin')
 def admin_login():

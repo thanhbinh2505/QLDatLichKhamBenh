@@ -122,13 +122,51 @@ if __name__ == '__main__':
         # db.session.add(u_admin)
         # db.session.commit()
 
-        u_bacsi = User(
-            username="bacsi1",
-            hoTen="Nguyễn Thanh Bình",
-            email="thanhbinh2505@gmail.com",
-            gioiTinh=True,
-            role=UserRole.BACSI
-        )
-        u_bacsi.set_password('123456')
-        db.session.add(u_bacsi)
+        doctors_data = [
+            {
+                "username": "bs_minhanh",
+                "hoTen": "Nguyễn Minh Anh",
+                "email": "minhanh.nguyen@gmail.com",
+                "chuyenKhoa": "Nhi khoa"
+            },
+            {
+                "username": "bs_hoangquan",
+                "hoTen": "Lê Hoàng Quân",
+                "email": "quan.lehoang@gmail.com",
+                "chuyenKhoa": "Tim mạch"
+            },
+            {
+                "username": "bs_phuongthao",
+                "hoTen": "Trần Phương Thảo",
+                "email": "thaotp.nha@gmail.com",
+                "chuyenKhoa": "Răng Hàm Mặt"
+            }
+        ]
+
+        for data in doctors_data:
+            # Kiểm tra xem user đã tồn tại chưa để tránh lỗi trùng lặp (unique)
+            exists = User.query.filter_by(username=data["username"]).first()
+            if not exists:
+                # Bước A: Tạo tài khoản User để đăng nhập
+                new_user = User(
+                    username=data["username"],
+                    hoTen=data["hoTen"],
+                    email=data["email"],
+                    gioiTinh=True,  # Mặc định Nam/Nữ tùy bạn
+                    role=UserRole.BACSI
+                )
+                new_user.set_password("123456")  # Mật khẩu mặc định
+
+                db.session.add(new_user)
+                db.session.flush()  # Lấy ID của user vừa tạo để gán cho bác sĩ
+
+                # Bước B: Tạo thông tin chuyên khoa trong bảng BacSi
+                new_doctor = BacSi(
+                    user_id=new_user.id,
+                    chuyenKhoa=data["chuyenKhoa"],
+                    trangThai=True
+                )
+                db.session.add(new_doctor)
+
+        # Lưu tất cả vào Database
         db.session.commit()
