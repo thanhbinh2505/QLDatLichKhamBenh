@@ -1,6 +1,6 @@
 
 from app import app, db
-from app.models import User, BenhNhan
+from app.models import User, BenhNhan, BacSi
 
 import json
 
@@ -19,7 +19,6 @@ def tao_user(username, hoten, email, gioitinh, password, role):
     db.session.flush()
 
     return user
-
 
 def them_benhnhan(username, hoten, email, gioitinh, password, role, ngaysinh=None, diachi=None):
     try:
@@ -46,3 +45,6 @@ def auth_user(username, password):
 
 def get_user_by_id(id):
     return User.query.get(id)
+
+def get_list_doctor():
+    return BacSi.query.join(User, BacSi.user_id == User.id).all()
