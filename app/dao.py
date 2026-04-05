@@ -1,5 +1,5 @@
 from app import app, db
-from app.models import User, BenhNhan, UserRole
+from app.models import User, BenhNhan, UserRole, BacSi
 import re
 import json
 
@@ -62,3 +62,6 @@ def auth_user(username, password):
 
 def get_user_by_id(id):
     return User.query.get(id)
+
+def get_list_doctor():
+    return BacSi.query.join(User, BacSi.user_id == User.id).all()
