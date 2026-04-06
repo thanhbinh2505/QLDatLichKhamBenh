@@ -1,6 +1,9 @@
+from datetime import datetime, time
+
+from sqlalchemy import func, outerjoin
 
 from app import app, db
-from app.models import User, BenhNhan, BacSi
+from app.models import User, BenhNhan, BacSi, KhungGio, PhieuDatLich, LichLamViec
 
 import json
 
@@ -48,3 +51,69 @@ def get_user_by_id(id):
 
 def get_list_doctor():
     return BacSi.query.join(User, BacSi.user_id == User.id).all()
+
+def get_so_ca_lam():
+    query = db.session.query(
+       LichLamViec,
+        BacSi,
+        User,
+        func.count(PhieuDatLich.id).label('count')
+    ).join(BacSi,LichLamViec.bacsi_id == BacSi.id) \
+    .join(User, BacSi.user_id == User.id) \
+    .outerjoin(KhungGio, LichLamViec.id == KhungGio.lich_id) \
+    .outerjoin(PhieuDatLich, KhungGio.id == PhieuDatLich.khunggio_id)\
+    .group_by(LichLamViec.id, BacSi.id) \
+    .order_by(LichLamViec.ngayLamViec.desc())
+    return query.all()
+
+def add_schedule(bacsi_id, ds_gio, ngay_lam_viec):
+    try:
+        schedule = datetime.strptime(ngay_lam_viec, '%Y-%m-%d').date()
+
+        lich = LichLamViec.query.filter_by(bacsi_id = bacsi_id,
+                                        ngayLamViec = ngay_lam_viec
+                                        ).first()
+
+        if not lich:
+            lich = LichLamViec(bacsi_id=bacsi_id,
+                                            ngayLamViec=ngay_lam_viec)
+            db.session.add(lich)
+            db.session.flush()
+        so_ca_lam = KhungGio.query.filter_by(lich_id = lich.id).count() if lich.id else 0
+
+        if so_ca_lam + len(ds_gio) > 20:
+            return False, f"Vượt quá giới hạn! Ngày này bác sĩ đã có {so_ca_lam} ca, bạn chỉ được thêm tối đa {20 - so_ca_lam} ca nữa."
+
+        khung_gio_da_co = []
+
+        if lich.id:
+            khung_gio_cu = KhungGio.query.filter_by(lich_id = lich.id).all()
+            khung_gio_da_co = [kg.startTime.strftime('%H:%M') for kg in khung_gio_cu]
+
+        for g in ds_gio:
+            if g in khung_gio_da_co:
+                db.session.rollback()
+                return False, "Khung giờ này không còn trống. Vui lòng chọn khung giờ khác!!!"
+            # Tính toán giờ kết thúc (+30 phút)
+            gio, phut = map(int, g.split(':'))
+            start_time = time(gio, phut)
+
+            phut_end = phut + 30
+            gio_end = gio
+            if phut_end >= 60:
+                phut_end -= 60
+                gio_end += 1
+            end_time = time(gio_end, phut_end)
+
+            # Tạo khung giờ mới
+            khung_gio_moi = KhungGio(
+                lich_id=lich.id,
+                startTime=start_time,
+                endTime=end_time
+            )
+            db.session.add(khung_gio_moi)
+        db.session.commit()
+        return True, "Cập nhật lịch làm việc thành công!"
+    except Exception as e:
+        db.session.rollback()
+        return False, str(e)
