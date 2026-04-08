@@ -1,7 +1,8 @@
-from flask import render_template, request, url_for
+from flask import render_template, request, url_for, jsonify
+from sqlalchemy.testing.exclusions import succeeds_if
 from werkzeug.utils import redirect
 from datetime import datetime
-from flask_login import login_user, logout_user, login_required
+from flask_login import login_user, logout_user, login_required, current_user
 from app import app, dao, login
 from app.models import UserRole
 
@@ -11,8 +12,52 @@ def index():
     return render_template('index.html', doctors=doctors)
 
 @app.route('/admin')
+@login_required
 def admin_login():
-    return render_template('admin.html')
+    if current_user.role != UserRole.ADMIN:
+        return redirect('/')
+    time_range = request.args.get('time_range','all')
+    kw = request.args.get('kw','')
+    danh_sach_lich = dao.get_so_ca_lam(time_range, kw)
+
+    return render_template('admin.html', danh_sach_lich=danh_sach_lich, time_range=time_range, kw=kw)
+
+
+@app.route('/admin/tao-lich', methods=['GET'])
+@login_required
+def admin_page_tao_lich():
+    if current_user.role != UserRole.ADMIN:
+        return redirect('/')
+
+    ds_bac_si = dao.get_list_doctor()
+    return render_template('admin_tao_lich.html', ds_bac_si=ds_bac_si)
+
+@app.route('/api/admin/tao-lich', methods=['POST'])
+@login_required
+def admin_tao_lich():
+    if current_user.role != UserRole.ADMIN :
+        return jsonify({'error': False, 'msg': 'Bạn không có quyền thao tác!'})
+    data = request.json
+    bacsi_id= data.get('bacsi_id')
+    ngay_lam_viec = data.get('ngay_lam_viec')
+    danh_sach_gio = data.get('danh_sach_gio')
+
+    if  not bacsi_id or not ngay_lam_viec or not danh_sach_gio:
+        return jsonify({'success': False, 'msg': 'Điền đầy đủ thông tin'})
+    success, msg = dao.add_schedule(bacsi_id,danh_sach_gio, ngay_lam_viec, )
+    return jsonify({'success': success, 'msg': msg})
+
+
+@app.route('/api/admin/chi-tiet-lich/<int:lich_id>', methods=['GET'])
+@login_required
+def api_chi_tiet_lich(lich_id):
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'success': False, 'msg': 'Bạn không có quyền!'})
+
+    data = dao.get_chi_tiet_lich_by_id(lich_id)
+    if data:
+        return jsonify({'success': True, 'data': data})
+    return jsonify({'success': False, 'msg': 'Không tìm thấy dữ liệu lịch này'})
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_process():
@@ -34,6 +79,11 @@ def login_process():
             error_msg = "Tài khoản hoặc mật khẩu không chính xác!"
 
     return render_template('login.html', error=error_msg)
+
+@app.route('/logout', methods=['GET', 'POST'])
+def logout_process():
+    logout_user()
+    return redirect('/')
 
 @app.route('/register', methods=["get", "post"])
 def register():

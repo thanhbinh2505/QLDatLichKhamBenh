@@ -1,41 +1,64 @@
 <header class="fixed w-full top-0 bg-white/95 backdrop-blur-sm shadow-sm z-50 border-b border-gray-100">
     <div class="w-full px-4 sm:px-6 lg:px-8 xl:px-12">
-        <div class="flex justify-between items-center h-20 relative">
-            <!-- Logo -->
-            <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer relative z-10">
+        <div class="flex justify-between items-center h-20">
+            <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer">
                 <i data-lucide="cross" class="h-8 w-8 text-primary"></i>
                 <span class="font-bold text-2xl tracking-tight text-slate-900">Medi<span class="text-primary">Care</span></span>
             </div>
 
-            <!-- Navigation (Desktop) - Căn giữa tuyệt đối để luôn cân bằng -->
-            <nav class="hidden lg:flex space-x-6 lg:space-x-8 absolute left-1/2 transform -translate-x-1/2 w-max">
-                <a href="#" class="text-slate-600 hover:text-primary font-medium transition-colors">Trang chủ</a>
-                <a href="#we" class="text-slate-600 hover:text-primary font-medium transition-colors">Về chúng tôi</a>
-                <a href="#services" class="text-slate-600 hover:text-primary font-medium transition-colors">Chuyên khoa</a>
-                <a href="#doctors" class="text-slate-600 hover:text-primary font-medium transition-colors">Đội ngũ bác sĩ</a>
+            <nav class="hidden lg:flex flex-1 justify-center space-x-4 lg:space-x-6 xl:space-x-8 px-4">
+                <a href="#" class="text-slate-600 hover:text-primary font-medium transition-colors whitespace-nowrap">Trang chủ</a>
+                <a href="#we" class="text-slate-600 hover:text-primary font-medium transition-colors whitespace-nowrap">Về chúng tôi</a>
+                <a href="#services" class="text-slate-600 hover:text-primary font-medium transition-colors whitespace-nowrap">Chuyên khoa</a>
+                <a href="#doctors" class="text-slate-600 hover:text-primary font-medium transition-colors whitespace-nowrap">Đội ngũ bác sĩ</a>
             </nav>
 
-            <!-- Action Group (CTA & Avatar) -->
-            <div class="flex items-center gap-3 md:gap-5 relative z-10">
-                <!-- CTA Button -->
-                <div class="hidden md:flex">
-                    <a href="#appointment" class="bg-primary hover:bg-primaryHover text-white px-6 py-2.5 rounded-full font-semibold transition-all shadow-md shadow-primary/30 flex items-center gap-2">
-                        <i data-lucide="calendar-plus" class="w-4 h-4"></i>
-                        Đặt lịch khám
-                    </a>
-                </div>
+            <div class="flex items-center gap-3 sm:gap-4 flex-shrink-0">
 
-                <!-- User Avatar (Login Link) -->
-                <a href="/login" class="flex items-center justify-center w-10 h-10 rounded-full bg-slate-50 border border-slate-200 text-slate-600 hover:text-primary hover:border-primary transition-all shadow-sm" title="Đăng nhập / Tài khoản">
-                    <i data-lucide="user" class="w-5 h-5"></i>
+                {% if current_user.is_authenticated %}
+                    <div class="hidden sm:block text-right mr-1">
+                        <p class="text-sm text-slate-500 leading-tight">Xin chào,</p>
+                        <p class="font-bold text-slate-900 leading-tight">{{ current_user.hoTen }}</p>
+                    </div>
+
+                    {% if current_user.role.name == 'ADMIN' %}
+                        <a href="/admin" class="hidden md:flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl font-medium transition-all shadow-md whitespace-nowrap">
+                            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                            Dashboard Admin
+                        </a>
+                    {% elif current_user.role.name == 'BACSI' %}
+                        <a href="/bacsi" class="hidden md:flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl font-medium transition-all shadow-md whitespace-nowrap">
+                            <i data-lucide="stethoscope" class="w-4 h-4"></i>
+                            Lịch làm việc
+                        </a>
+                    {% elif current_user.role.name == 'BENHNHAN' %}
+                        <a href="/hoso" class="hidden md:flex items-center gap-2 bg-blue-50 text-primary hover:bg-blue-100 px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl font-medium transition-all whitespace-nowrap">
+                            <i data-lucide="folder-clock" class="w-4 h-4"></i>
+                            Hồ sơ & Lịch khám
+                        </a>
+                    {% endif %}
+
+                    <a href="/logout" title="Đăng xuất" class="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors flex-shrink-0">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </a>
+
+                {% else %}
+                    <a href="/login" class="hidden sm:block text-slate-600 hover:text-primary font-semibold px-2 lg:px-4 py-2 transition-colors whitespace-nowrap">
+                        Đăng nhập
+                    </a>
+                    <a href="/register" class="hidden sm:flex bg-primary hover:bg-primaryHover text-white px-4 py-2 lg:px-6 lg:py-2.5 rounded-xl font-semibold transition-all shadow-md shadow-primary/30 items-center gap-2 whitespace-nowrap">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        Đăng ký
+                    </a>
+                {% endif %}
+
+                <div class="hidden md:block w-px h-6 bg-gray-200 mx-1"></div>
+
+                <a href="#appointment" class="hidden md:flex bg-primary hover:bg-primaryHover text-white px-5 py-2.5 lg:px-6 rounded-full font-semibold transition-all shadow-md shadow-primary/30 items-center gap-2 whitespace-nowrap">
+                    <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+                    Đặt lịch khám
                 </a>
 
-                <!-- Mobile menu button -->
-                <div class="lg:hidden flex items-center">
-                    <button class="text-slate-600 hover:text-primary focus:outline-none">
-                        <i data-lucide="menu" class="h-6 w-6"></i>
-                    </button>
-                </div>
             </div>
         </div>
     </div>

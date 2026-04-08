@@ -55,7 +55,6 @@ class BenhNhan(BaseModel):
 
     ngaySinh = Column(Date, nullable=True)
     diaChi = Column(String(50), nullable=True)
-    soLanHuyTrongTuan= Column(Integer,default = 0)
     thoiGianMoKhoa = Column(DateTime, nullable=True)
 
     user = relationship('User', backref='Benhnhan', uselist=False)
@@ -75,6 +74,13 @@ class Admin(BaseModel):
     user_id = Column(Integer, ForeignKey('user.id'),unique=True)
     user = relationship('User', backref='admin_profile', uselist=False)
 
+class LichNghi(BaseModel):
+    __tablename__ = 'lichnghi'
+    bacsi_id = Column(Integer, ForeignKey('bacsi.id'), nullable=False)
+    ngayNghi = Column(Date, nullable=True)
+
+    bac_si = relationship('BacSi', backref='lich_nghi', lazy=True)
+
 class LichLamViec(BaseModel):
     __tablename__ = 'lichlamviec'
 
@@ -91,6 +97,9 @@ class PhieuDatLich(BaseModel):
 
     ngayTaoPhieu = Column(DateTime,default=datetime.datetime.now, nullable=False)
     status = Column(Enum(Status), default=Status.Scheduled,nullable=False)
+    cancelTime = Column(DateTime)
+
+    user_huy_id = Column(Integer, ForeignKey('user.id'), nullable=True)
 
     benh_nhan = relationship('BenhNhan', backref='PhieuDatLich', lazy=True)
     khung_gio = relationship('KhungGio', backref='PhieuDatLich', lazy=True)
@@ -106,10 +115,10 @@ class KhungGio(BaseModel):
     lich_lam_viec = relationship('LichLamViec', backref='KhungGio', lazy=True)
 
 
-
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+
 
         # u_admin = User(
         #     username= "admin",
@@ -121,52 +130,76 @@ if __name__ == '__main__':
         # u_admin.set_password('123456')
         # db.session.add(u_admin)
         # db.session.commit()
+        #
+        # doctors_data = [
+        #     {
+        #         "username": "bs_minhanh",
+        #         "hoTen": "Nguyễn Minh Anh",
+        #         "email": "minhanh.nguyen@gmail.com",
+        #         "chuyenKhoa": "Nhi khoa"
+        #     },
+        #     {
+        #         "username": "bs_hoangquan",
+        #         "hoTen": "Lê Hoàng Quân",
+        #         "email": "quan.lehoang@gmail.com",
+        #         "chuyenKhoa": "Tim mạch"
+        #     },
+        #     {
+        #         "username": "bs_phuongthao",
+        #         "hoTen": "Trần Phương Thảo",
+        #         "email": "thaotp.nha@gmail.com",
+        #         "chuyenKhoa": "Răng Hàm Mặt"
+        #     }
+        # ]
+        #
+        # for data in doctors_data:
+        #     # Kiểm tra xem user đã tồn tại chưa để tránh lỗi trùng lặp (unique)
+        #     exists = User.query.filter_by(username=data["username"]).first()
+        #     if not exists:
+        #         # Bước A: Tạo tài khoản User để đăng nhập
+        #         new_user = User(
+        #             username=data["username"],
+        #             hoTen=data["hoTen"],
+        #             email=data["email"],
+        #             gioiTinh=True,  # Mặc định Nam/Nữ tùy bạn
+        #             role=UserRole.BACSI
+        #         )
+        #         new_user.set_password("123456")  # Mật khẩu mặc định
+        #
+        #         db.session.add(new_user)
+        #         db.session.flush()  # Lấy ID của user vừa tạo để gán cho bác sĩ
+        #
+        #         # Bước B: Tạo thông tin chuyên khoa trong bảng BacSi
+        #         new_doctor = BacSi(
+        #             user_id=new_user.id,
+        #             chuyenKhoa=data["chuyenKhoa"],
+        #             trangThai=True
+        #         )
+        #         db.session.add(new_doctor)
+        #
+        # # Lưu tất cả vào Database
+        # db.session.commit()
+        # 1. Lấy thông tin bệnh nhân và khung giờ để test
+        bn1 = BenhNhan.query.join(User).filter(User.username == 'bn1').first()
+        # Lấy 2 khung giờ đầu tiên có trong máy (đã được admin tạo từ trước)
+        all_kg = KhungGio.query.all()
 
-        doctors_data = [
-            {
-                "username": "bs_minhanh",
-                "hoTen": "Nguyễn Minh Anh",
-                "email": "minhanh.nguyen@gmail.com",
-                "chuyenKhoa": "Nhi khoa"
-            },
-            {
-                "username": "bs_hoangquan",
-                "hoTen": "Lê Hoàng Quân",
-                "email": "quan.lehoang@gmail.com",
-                "chuyenKhoa": "Tim mạch"
-            },
-            {
-                "username": "bs_phuongthao",
-                "hoTen": "Trần Phương Thảo",
-                "email": "thaotp.nha@gmail.com",
-                "chuyenKhoa": "Răng Hàm Mặt"
-            }
-        ]
-
-        for data in doctors_data:
-            # Kiểm tra xem user đã tồn tại chưa để tránh lỗi trùng lặp (unique)
-            exists = User.query.filter_by(username=data["username"]).first()
-            if not exists:
-                # Bước A: Tạo tài khoản User để đăng nhập
-                new_user = User(
-                    username=data["username"],
-                    hoTen=data["hoTen"],
-                    email=data["email"],
-                    gioiTinh=True,  # Mặc định Nam/Nữ tùy bạn
-                    role=UserRole.BACSI
+        if bn1 and len(all_kg) >= 2:
+            # Kiểm tra xem khung giờ này đã bị ai đặt chưa (vì khunggio_id là UNIQUE)
+            p1_exists = PhieuDatLich.query.filter_by(khunggio_id=all_kg[0].id).first()
+            if not p1_exists:
+                p1 = PhieuDatLich(
+                    benhnhan_id=bn1.id,
+                    khunggio_id=all_kg[0].id,
+                    status=Status.Scheduled,
+                    # Lưu ý: Cột user_huy_id trong model của bạn đang để NOT NULL
+                    # Nên tạm thời ta gán ID của Admin vào đây để tránh lỗi DB
+                    user_huy_id=1
                 )
-                new_user.set_password("123456")  # Mật khẩu mặc định
+                db.session.add(p1)
 
-                db.session.add(new_user)
-                db.session.flush()  # Lấy ID của user vừa tạo để gán cho bác sĩ
 
-                # Bước B: Tạo thông tin chuyên khoa trong bảng BacSi
-                new_doctor = BacSi(
-                    user_id=new_user.id,
-                    chuyenKhoa=data["chuyenKhoa"],
-                    trangThai=True
-                )
-                db.session.add(new_doctor)
-
-        # Lưu tất cả vào Database
-        db.session.commit()
+            db.session.commit()
+            print("Đã tạo phiếu đặt lịch mẫu thành công!")
+        else:
+            print("Lỗi: Không tìm thấy bệnh nhân hoặc chưa có khung giờ nào được Admin tạo.")

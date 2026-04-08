@@ -1,10 +1,216 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends 'layout/base.html' %}
 
-</body>
-</html>
+{% block title %}Admin Dashboard - Quản lý Phòng Khám{% endblock %}
+
+{% block header %}
+    {% endblock %}
+
+{% block footer %}
+    {% endblock %}
+
+{% block content %}
+<script src="{{ url_for('static', filename='js/admin.js') }}?v=2"></script>
+<div class="bg-slate-50 font-sans text-slate-900 flex h-screen overflow-hidden w-full">
+
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex">
+        <div class="h-16 flex items-center px-6 border-b border-gray-100">
+            <h1 class="text-xl font-bold text-primary flex items-center gap-2">
+                <i data-lucide="shield-check" class="w-6 h-6"></i>
+                Admin Portal
+            </h1>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <a href="#" class="flex items-center gap-3 px-4 py-3 bg-blue-50 text-primary rounded-xl transition-colors font-medium">
+                <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                Quản lý lịch Bác sĩ
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-primary rounded-xl transition-colors font-medium">
+                <i data-lucide="calendar-x-2" class="w-5 h-5"></i>
+                Quản lý lịch hẹn
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-primary rounded-xl transition-colors font-medium">
+                <i data-lucide="users" class="w-5 h-5"></i>
+                Bệnh nhân
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-100">
+            <a href="/logout" class="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors font-medium">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+                Đăng xuất
+            </a>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+        
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-sm z-10 shrink-0">
+            <h2 class="text-lg font-bold text-slate-800">Quản lý lịch làm việc Bác sĩ</h2>
+            <div class="flex items-center gap-4">
+                {% if current_user.is_authenticated %}
+                <div class="text-right hidden sm:block">
+                    <p class="text-sm font-bold text-slate-900">{{ current_user.hoTen }}</p>
+                    <p class="text-xs text-slate-500">{{ current_user.email }}</p>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold uppercase">AD
+                </div>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8">
+
+            <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-8 flex items-start gap-4">
+                <div class="mt-1 text-primary">
+                    <i data-lucide="info" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-blue-900 mb-1">Quy định tạo lịch làm việc</h3>
+                    <ul class="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                        <li>Một bác sĩ tối đa <b>20 lịch khám/ngày</b>.</li>
+                        <li>Không được tạo lịch <b>trùng thời gian</b> của cùng một bác sĩ.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <form method="GET" action="/admin" class="flex flex-col lg:flex-row justify-between items-center mb-6 gap-4">
+
+                <div class="flex items-center gap-1 bg-white p-1 rounded-xl border border-gray-200 shadow-sm w-full lg:w-auto">
+                    <input type="hidden" name="time_range" id="timeRangeInput" value="{{ time_range }}">
+
+                    <button type="button" onclick="setFilter('today')"
+                        class="flex-1 lg:flex-none px-5 py-2 rounded-lg transition-colors text-sm {% if time_range == 'today' %}bg-blue-50 text-primary font-bold{% else %}text-slate-500{% endif %}">
+                        Hôm nay
+                    </button>
+                    <button type="button" onclick="setFilter('week')"
+                        class="flex-1 lg:flex-none px-5 py-2 rounded-lg transition-colors text-sm {% if time_range == 'week' %}bg-blue-50 text-primary font-bold{% else %}text-slate-500{% endif %}">
+                        Tuần này
+                    </button>
+                    <button type="button" onclick="setFilter('all')"
+                        class="flex-1 lg:flex-none px-5 py-2 rounded-lg transition-colors text-sm {% if time_range == 'all' %}bg-blue-50 text-primary font-bold{% else %}text-slate-500{% endif %}">
+                        Tất cả
+                    </button>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                    <div class="relative w-full sm:w-64">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+                        <input type="text" name="kw" value="{{ kw }}" placeholder="Tìm theo tên bác sĩ..."
+                            class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all">
+                    </div>
+                    <button type="submit" class="hidden"></button> <a href="/admin/tao-lich" class="w-full sm:w-auto bg-primary hover:bg-primaryHover text-white px-6 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-md">
+                        <i data-lucide="calendar-plus" class="w-5 h-5"></i>
+                        Tạo lịch làm việc
+                    </a>
+                </div>
+            </form>
+
+            <script>
+                function setFilter(val) {
+                    document.getElementById('timeRangeInput').value = val;
+                    // Tìm thẻ form gần nhất và submit
+                    document.getElementById('timeRangeInput').closest('form').submit();
+                }
+            </script>
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-gray-200 text-slate-600 text-sm">
+                                <th class="px-6 py-4 font-semibold">Bác sĩ</th>
+                                <th class="px-6 py-4 font-semibold">Chuyên khoa</th>
+                                <th class="px-6 py-4 font-semibold">Ngày làm việc</th>
+                                <th class="px-6 py-4 font-semibold">Số ca khám</th>
+                                <th class="px-6 py-4 font-semibold text-center">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-slate-700">
+                       {% for lich, bacsi, user, count in danh_sach_lich %}
+                            <tr class="hover:bg-slate-50 transition-colors">
+
+                                <td class="px-6 py-4 flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-blue-100 text-primary flex items-center justify-center font-bold text-sm uppercase">
+                                        {{ user.hoTen[0] if user.hoTen else 'B' }}
+                                    </div>
+                                    <span class="font-medium">BS {{ user.hoTen }}</span>
+                                </td>
+
+                                <td class="px-6 py-4">{{ bacsi.chuyenKhoa }}</td>
+                                <td class="px-6 py-4">{{ lich.ngayLamViec.strftime('%d/%m/%Y') }}</td>
+
+                                <td class="px-6 py-4">
+                                    {% if count >= 20 %}
+                                        <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">{{ count }} / 20</span>
+                                    {% elif count >= 15 %}
+                                        <span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">{{ count }} / 20</span>
+                                    {% else %}
+                                        <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">{{ count }} / 20</span>
+                                    {% endif %}
+                                </td>
+
+                               <td class="px-6 py-4 text-center">
+                                    <button onclick="openModal({{ lich.id }})" class="text-blue-600 hover:text-blue-800 p-2" title="Chi tiết / Thêm ca">
+                                        <i data-lucide="edit" class="w-5 h-5"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="px-6 py-8 text-center text-slate-500">
+                                    Chưa có lịch làm việc nào được tạo.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+</div>
+<div id="modalLich" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 hidden backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+            <div>
+                <h3 id="modalTitle" class="text-lg font-bold text-primary">Chi tiết lịch</h3>
+                <p id="modalSubTitle" class="text-sm text-slate-500"></p>
+            </div>
+            <button onclick="closeModal()" class="p-2 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto space-y-6">
+            <div>
+                <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i data-lucide="list-checks" class="w-4 h-4"></i> Các ca đã thiết lập
+                </h4>
+                <div id="caDaCo" class="flex flex-wrap gap-2">
+                    </div>
+            </div>
+
+            <hr class="border-dashed border-gray-200">
+
+            <div>
+                <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Bổ sung thêm ca khám mới
+                </h4>
+                <div id="caConTrong" class="grid grid-cols-4 sm:grid-cols-5 gap-3">
+                    </div>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-100 bg-slate-50 flex justify-end gap-3">
+            <button onclick="closeModal()" class="px-6 py-2 text-slate-600 font-medium hover:underline">Đóng</button>
+            <button onclick="saveMoreSchedule()" class="px-6 py-2 bg-primary text-white rounded-xl font-bold shadow-md hover:bg-primaryHover transition-all">Lưu ca mới</button>
+        </div>
+    </div>
+</div>
+<script>
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+</script>
+{% endblock %}
