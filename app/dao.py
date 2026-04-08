@@ -1,9 +1,9 @@
-from datetime import datetime, time
+from datetime import datetime, time, date, timedelta
 
 from sqlalchemy import func, outerjoin
 
 from app import app, db
-from app.models import User, BenhNhan, BacSi, KhungGio, PhieuDatLich, LichLamViec
+from app.models import User, BenhNhan, BacSi, KhungGio, PhieuDatLich, LichLamViec, Status
 
 import json
 
@@ -52,7 +52,7 @@ def get_user_by_id(id):
 def get_list_doctor():
     return BacSi.query.join(User, BacSi.user_id == User.id).all()
 
-def get_so_ca_lam():
+def get_so_ca_lam(time_range = 'all', kw = None):
     query = db.session.query(
        LichLamViec,
         BacSi,
@@ -61,10 +61,19 @@ def get_so_ca_lam():
     ).join(BacSi,LichLamViec.bacsi_id == BacSi.id) \
     .join(User, BacSi.user_id == User.id) \
     .outerjoin(KhungGio, LichLamViec.id == KhungGio.lich_id) \
-    .outerjoin(PhieuDatLich, KhungGio.id == PhieuDatLich.khunggio_id)\
-    .group_by(LichLamViec.id, BacSi.id) \
-    .order_by(LichLamViec.ngayLamViec.desc())
-    return query.all()
+    .outerjoin(PhieuDatLich, KhungGio.id == PhieuDatLich.khunggio_id)
+    if kw:
+        query = query.filter(User.hoTen.ilike(f'%{kw}%'))
+    today = date.today()
+    if time_range == 'today':
+        query = query.filter(LichLamViec.ngayLamViec == today)
+    elif time_range == 'week':
+        startWeek = today - timedelta(days=today.weekday())
+        endWeek = startWeek + timedelta(days=6)
+        query = query.filter(LichLamViec.ngayLamViec >= startWeek,
+                             LichLamViec.ngayLamViec<=endWeek)
+
+    return query.group_by(LichLamViec.id, BacSi.id, User.id).order_by(LichLamViec.ngayLamViec.desc()).all()
 
 def add_schedule(bacsi_id, ds_gio, ngay_lam_viec):
     try:
@@ -117,3 +126,41 @@ def add_schedule(bacsi_id, ds_gio, ngay_lam_viec):
     except Exception as e:
         db.session.rollback()
         return False, str(e)
+
+
+# Thêm Status vào phần import ở đầu file dao.py
+from app.models import Status
+
+
+def get_chi_tiet_lich_by_id(lich_id):
+    lich = LichLamViec.query.get(lich_id)
+    if not lich:
+        return None
+
+    bacsi = BacSi.query.get(lich.bacsi_id)
+    user = User.query.get(bacsi.user_id)
+
+    # Lấy tất cả khung giờ của ngày này, sắp xếp theo thời gian
+    khung_gios = KhungGio.query.filter_by(lich_id=lich_id).order_by(KhungGio.startTime).all()
+
+    danh_sach_ca = []
+    for kg in khung_gios:
+        # KIỂM TRA: Khung giờ này đã có bệnh nhân nào đặt thành công chưa?
+        # Theo models.py, khunggio_id là unique trong PhieuDatLich
+        phieu = PhieuDatLich.query.filter_by(
+            khunggio_id=kg.id,
+            status=Status.Scheduled
+        ).first()
+
+        danh_sach_ca.append({
+            'time': kg.startTime.strftime('%H:%M'),
+            'is_booked': True if phieu else False  # Nếu có phiếu -> Đã đặt
+        })
+
+    return {
+        'ten_bacsi': user.hoTen,
+        'ngay_lam_viec': lich.ngayLamViec.strftime('%d/%m/%Y'),
+        'raw_date': lich.ngayLamViec.strftime('%Y-%m-%d'),
+        'bacsi_id': bacsi.id,
+        'ca_lam_viec': danh_sach_ca
+    }

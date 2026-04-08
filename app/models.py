@@ -55,7 +55,6 @@ class BenhNhan(BaseModel):
 
     ngaySinh = Column(Date, nullable=True)
     diaChi = Column(String(50), nullable=True)
-    soLanHuyTrongTuan= Column(Integer,default = 0)
     thoiGianMoKhoa = Column(DateTime, nullable=True)
 
     user = relationship('User', backref='Benhnhan', uselist=False)
@@ -75,6 +74,13 @@ class Admin(BaseModel):
     user_id = Column(Integer, ForeignKey('user.id'),unique=True)
     user = relationship('User', backref='admin_profile', uselist=False)
 
+class LichNghi(BaseModel):
+    __tablename__ = 'lichnghi'
+    bacsi_id = Column(Integer, ForeignKey('bacsi.id'), nullable=False)
+    ngayNghi = Column(Date, nullable=True)
+
+    bac_si = relationship('BacSi', backref='lich_nghi', lazy=True)
+
 class LichLamViec(BaseModel):
     __tablename__ = 'lichlamviec'
 
@@ -91,6 +97,9 @@ class PhieuDatLich(BaseModel):
 
     ngayTaoPhieu = Column(DateTime,default=datetime.datetime.now, nullable=False)
     status = Column(Enum(Status), default=Status.Scheduled,nullable=False)
+    cancelTime = Column(DateTime)
+
+    user_huy_id = Column(Integer, ForeignKey('user.id'), nullable=True)
 
     benh_nhan = relationship('BenhNhan', backref='PhieuDatLich', lazy=True)
     khung_gio = relationship('KhungGio', backref='PhieuDatLich', lazy=True)
@@ -106,10 +115,10 @@ class KhungGio(BaseModel):
     lich_lam_viec = relationship('LichLamViec', backref='KhungGio', lazy=True)
 
 
-
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+
 
         # u_admin = User(
         #     username= "admin",
@@ -121,7 +130,7 @@ if __name__ == '__main__':
         # u_admin.set_password('123456')
         # db.session.add(u_admin)
         # db.session.commit()
-
+        #
         # doctors_data = [
         #     {
         #         "username": "bs_minhanh",
@@ -170,24 +179,27 @@ if __name__ == '__main__':
         #
         # # Lưu tất cả vào Database
         # db.session.commit()
+        # 1. Lấy thông tin bệnh nhân và khung giờ để test
+        bn1 = BenhNhan.query.join(User).filter(User.username == 'bn1').first()
+        # Lấy 2 khung giờ đầu tiên có trong máy (đã được admin tạo từ trước)
+        all_kg = KhungGio.query.all()
 
-        if not LichLamViec.query.first():
-            # Lấy 2 bác sĩ đầu tiên trong CSDL ra
-            bs1 = BacSi.query.filter_by(chuyenKhoa="Nhi khoa").first()
-            bs2 = BacSi.query.filter_by(chuyenKhoa="Tim mạch").first()
-
-            if bs1 and bs2:
-                # Tạo lịch làm việc cho bác sĩ 1
-                lich1 = LichLamViec(
-                    bacsi_id=bs1.id,
-                    ngayLamViec=datetime.date(2026, 9, 4)
+        if bn1 and len(all_kg) >= 2:
+            # Kiểm tra xem khung giờ này đã bị ai đặt chưa (vì khunggio_id là UNIQUE)
+            p1_exists = PhieuDatLich.query.filter_by(khunggio_id=all_kg[0].id).first()
+            if not p1_exists:
+                p1 = PhieuDatLich(
+                    benhnhan_id=bn1.id,
+                    khunggio_id=all_kg[0].id,
+                    status=Status.Scheduled,
+                    # Lưu ý: Cột user_huy_id trong model của bạn đang để NOT NULL
+                    # Nên tạm thời ta gán ID của Admin vào đây để tránh lỗi DB
+                    user_huy_id=1
                 )
-                # Tạo lịch làm việc cho bác sĩ 2
-                lich2 = LichLamViec(
-                    bacsi_id=bs2.id,
-                    ngayLamViec=datetime.date(2026, 9, 5)
-                )
+                db.session.add(p1)
 
-                db.session.add(lich1)
-                db.session.add(lich2)
-                db.session.commit()
+
+            db.session.commit()
+            print("Đã tạo phiếu đặt lịch mẫu thành công!")
+        else:
+            print("Lỗi: Không tìm thấy bệnh nhân hoặc chưa có khung giờ nào được Admin tạo.")

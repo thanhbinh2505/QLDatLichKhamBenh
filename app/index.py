@@ -16,10 +16,21 @@ def index():
 def admin_login():
     if current_user.role != UserRole.ADMIN:
         return redirect('/')
-    danh_sach_lich = dao.get_so_ca_lam()
-    ds_bac_si = dao.get_list_doctor()
+    time_range = request.args.get('time_range','all')
+    kw = request.args.get('kw','')
+    danh_sach_lich = dao.get_so_ca_lam(time_range, kw)
 
-    return render_template('admin.html', danh_sach_lich=danh_sach_lich, ds_bac_si=ds_bac_si)
+    return render_template('admin.html', danh_sach_lich=danh_sach_lich, time_range=time_range, kw=kw)
+
+
+@app.route('/admin/tao-lich', methods=['GET'])
+@login_required
+def admin_page_tao_lich():
+    if current_user.role != UserRole.ADMIN:
+        return redirect('/')
+
+    ds_bac_si = dao.get_list_doctor()
+    return render_template('admin_tao_lich.html', ds_bac_si=ds_bac_si)
 
 @app.route('/api/admin/tao-lich', methods=['POST'])
 @login_required
@@ -35,6 +46,18 @@ def admin_tao_lich():
         return jsonify({'success': False, 'msg': 'Điền đầy đủ thông tin'})
     success, msg = dao.add_schedule(bacsi_id,danh_sach_gio, ngay_lam_viec, )
     return jsonify({'success': success, 'msg': msg})
+
+
+@app.route('/api/admin/chi-tiet-lich/<int:lich_id>', methods=['GET'])
+@login_required
+def api_chi_tiet_lich(lich_id):
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'success': False, 'msg': 'Bạn không có quyền!'})
+
+    data = dao.get_chi_tiet_lich_by_id(lich_id)
+    if data:
+        return jsonify({'success': True, 'data': data})
+    return jsonify({'success': False, 'msg': 'Không tìm thấy dữ liệu lịch này'})
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_process():
@@ -57,11 +80,10 @@ def login_process():
 
     return render_template('login.html', error=error_msg)
 
-@app.route('/logout')
-@login_required
+@app.route('/logout', methods=['GET', 'POST'])
 def logout_process():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect('/')
 
 @app.route('/register', methods=["get", "post"])
 def register():
