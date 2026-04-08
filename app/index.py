@@ -94,26 +94,36 @@ def register():
         hoten = request.form.get("hoten")
         gioitinh_form = request.form.get("gioitinh")
 
+        if gioitinh_form not in ['male', 'female']:
+            err_msg = "Vui lòng chọn giới tính!"
+            return render_template('register.html', err_msg=err_msg)
+
         gioitinh = True if gioitinh_form == 'male' else False
+
         email = request.form.get("email")
 
         ngaysinh_form = request.form.get("ngaysinh")
+        print(ngaysinh_form)
         ngaysinh = None
-
         if ngaysinh_form:
             try:
                 ngaysinh = datetime.strptime(ngaysinh_form, "%Y-%m-%d").date()
+                print(ngaysinh)
             except ValueError:
                 err_msg = "Định dạng ngày sinh không hợp lệ!"
                 return render_template('register.html', err_msg=err_msg)
 
         diachi = request.form.get("diachi")
 
-        if dao.them_benhnhan(username, hoten, email, gioitinh, password,
-                             UserRole.BENHNHAN, ngaysinh=ngaysinh, diachi=diachi):
-            return redirect(url_for('login_process'))
-        else:
-            err_msg = "something went wrong"
+        try:
+
+            if dao.them_benhnhan(username, hoten, email, gioitinh, password,
+                                    ngaysinh=ngaysinh, diachi=diachi):
+                return redirect(url_for('login_process'))
+        except ValueError as e:
+            err_msg = str(e)
+        except Exception as e:
+            err_msg = "Có lỗi xảy ra. Vui lòng thử lại sau!"
     return render_template('register.html', err_msg=err_msg)
 
 @login.user_loader
