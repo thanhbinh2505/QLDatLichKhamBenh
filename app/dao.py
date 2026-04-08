@@ -3,7 +3,7 @@ from datetime import datetime, time, date, timedelta
 from sqlalchemy import func, outerjoin
 
 from app import app, db
-from app.models import User, BenhNhan, BacSi, KhungGio, PhieuDatLich, LichLamViec, Status
+from app.models import User, BenhNhan, BacSi, KhungGio, PhieuDatLich, LichLamViec, Status, UserRole
 
 import re
 import json

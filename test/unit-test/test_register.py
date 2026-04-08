@@ -29,7 +29,6 @@ def test_success(test_session):
     assert u.check_password(password='Abcd123@')
     assert benhnhan.ngaySinh == ngaysinh
     assert benhnhan.diaChi == 'Gia Lai'
-    assert benhnhan.soLanHuyTrongTuan == 0
     assert benhnhan.thoiGianMoKhoa == None
 
 

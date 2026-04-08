@@ -180,26 +180,3 @@ if __name__ == '__main__':
         # # Lưu tất cả vào Database
         # db.session.commit()
         # 1. Lấy thông tin bệnh nhân và khung giờ để test
-        bn1 = BenhNhan.query.join(User).filter(User.username == 'bn1').first()
-        # Lấy 2 khung giờ đầu tiên có trong máy (đã được admin tạo từ trước)
-        all_kg = KhungGio.query.all()
-
-        if bn1 and len(all_kg) >= 2:
-            # Kiểm tra xem khung giờ này đã bị ai đặt chưa (vì khunggio_id là UNIQUE)
-            p1_exists = PhieuDatLich.query.filter_by(khunggio_id=all_kg[0].id).first()
-            if not p1_exists:
-                p1 = PhieuDatLich(
-                    benhnhan_id=bn1.id,
-                    khunggio_id=all_kg[0].id,
-                    status=Status.Scheduled,
-                    # Lưu ý: Cột user_huy_id trong model của bạn đang để NOT NULL
-                    # Nên tạm thời ta gán ID của Admin vào đây để tránh lỗi DB
-                    user_huy_id=1
-                )
-                db.session.add(p1)
-
-
-            db.session.commit()
-            print("Đã tạo phiếu đặt lịch mẫu thành công!")
-        else:
-            print("Lỗi: Không tìm thấy bệnh nhân hoặc chưa có khung giờ nào được Admin tạo.")
