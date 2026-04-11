@@ -1,0 +1,76 @@
+<div class="relative min-h-screen md:flex bg-gray-50">
+
+    <button id="mobile-menu-btn" class="md:hidden fixed sticky top-2 left-0 m-1 z-20 bg-white border border-gray-200 text-gray-700 hover:text-primary focus:outline-none p-2.5 rounded-xl">
+        <i data-lucide="menu" class="w-6 h-6"></i>
+    </button>
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden transition-opacity md:hidden"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out transform -translate-x-full md:relative md:translate-x-0 md:flex">
+
+        <div class="h-16 flex items-center justify-between px-6 border-b border-gray-100">
+            <h1 class="text-xl font-bold text-primary flex items-center gap-2">
+                <i data-lucide="shield-check" class="w-6 h-6"></i>
+                <span>Admin Portal</span>
+            </h1>
+            <button id="close-menu-btn" class="md:hidden text-gray-400 hover:text-red-500 p-1 bg-gray-50 rounded-lg">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <a href="/admin/lich-lam-viec"
+               class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium
+           {% if active_tab == 'lich_lam_viec' %} bg-blue-50 text-primary {% else %} text-slate-600 hover:bg-blue-50 hover:text-primary {% endif %}">
+                <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                Quản lý lịch làm việc
+            </a>
+
+            <a href="/admin/lich-hen"
+               class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium
+           {% if active_tab == 'lich_hen' %} bg-blue-50 text-primary {% else %} text-slate-600 hover:bg-blue-50 hover:text-primary {% endif %}">
+                <i data-lucide="calendar-x-2" class="w-5 h-5"></i>
+                Quản lý lịch hẹn
+            </a>
+
+            <a href="/admin/benh-nhan"
+               class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium
+           {% if active_tab == 'benh_nhan' %} bg-blue-50 text-primary {% else %} text-slate-600 hover:bg-blue-50 hover:text-primary {% endif %}">
+                <i data-lucide="users" class="w-5 h-5"></i>
+                Bệnh nhân
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-100">
+            <a href="/logout"
+               class="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors font-medium">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+                Đăng xuất
+            </a>
+        </div>
+    </aside>
+
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const openBtn = document.getElementById('mobile-menu-btn');
+        const closeBtn = document.getElementById('close-menu-btn');
+
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('hidden');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        }
+
+        openBtn.addEventListener('click', openSidebar);
+        closeBtn.addEventListener('click', closeSidebar);
+        overlay.addEventListener('click', closeSidebar);
+    });
+</script>

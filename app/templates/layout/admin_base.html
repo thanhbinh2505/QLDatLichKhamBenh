@@ -1,0 +1,29 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Admin Dashboard - Quản lý Phòng Khám{% endblock %}
+
+{% block header %}
+{% endblock %}
+
+{% block footer %}
+{% endblock %}
+
+{% block content %}
+<div class="bg-slate-50 font-sans text-slate-900 flex h-screen overflow-hidden w-full">
+    {%block dashboard%}
+    {%include 'layout/admin_dashboard.html'%}
+    {%endblock%}
+
+    <main class="flex-1 flex flex-col h-screen overflow-hidden">
+        {%block admin_header%}
+        {%include 'layout/admin_header.html'%}
+        {%endblock%}
+
+        <div class="flex-1 overflow-y-auto p-2">
+            {%block content2 required%}
+            {%endblock%}
+        </div>
+    </main>
+</div>
+{%endblock%}
+

@@ -1,10 +1,11 @@
 from flask import render_template, request, url_for, jsonify
 from sqlalchemy.testing.exclusions import succeeds_if
 from werkzeug.utils import redirect
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_login import login_user, logout_user, login_required, current_user
 from app import app, dao, login
-from app.models import UserRole
+from app.models import UserRole, CaLam, LichLamViec, NgayLamViec, PhanCa
+
 
 @app.route('/')
 def index():
@@ -13,51 +14,93 @@ def index():
 
 @app.route('/admin')
 @login_required
-def admin_login():
-    if current_user.role != UserRole.ADMIN:
-        return redirect('/')
-    time_range = request.args.get('time_range','all')
-    kw = request.args.get('kw','')
-    danh_sach_lich = dao.get_so_ca_lam(time_range, kw)
+def admin():
 
-    return render_template('admin.html', danh_sach_lich=danh_sach_lich, time_range=time_range, kw=kw)
+    return render_template('admin.html', active_tab="lich_lam_viec")
 
 
 @app.route('/admin/tao-lich', methods=['GET'])
 @login_required
 def admin_page_tao_lich():
-    if current_user.role != UserRole.ADMIN:
-        return redirect('/')
+    ds_calam = dao.get_list_shift()
 
-    ds_bac_si = dao.get_list_doctor()
-    return render_template('admin_tao_lich.html', ds_bac_si=ds_bac_si)
+    ngay_bat_dau_goi_y = dao.get_ngay_chua_sap_lich_gan_nhat()
+    ngay_ket_thuc_goi_y = ngay_bat_dau_goi_y + timedelta(days=6)
 
-@app.route('/api/admin/tao-lich', methods=['POST'])
-@login_required
-def admin_tao_lich():
-    if current_user.role != UserRole.ADMIN :
-        return jsonify({'error': False, 'msg': 'Bạn không có quyền thao tác!'})
+    return render_template('admin_tao_lich.html',
+                           ds_calam=ds_calam,
+                           ngay_bat_dau_goi_y=ngay_bat_dau_goi_y.strftime('%Y-%m-%d'),
+                           ngay_ket_thuc_goi_y=ngay_ket_thuc_goi_y.strftime('%Y-%m-%d')
+                           )
+
+
+from flask import request, jsonify
+
+
+@app.route('/api/admin/luu-lich-lam-viec', methods=['POST'])
+def api_tao_lich_moi():
     data = request.json
-    bacsi_id= data.get('bacsi_id')
-    ngay_lam_viec = data.get('ngay_lam_viec')
-    danh_sach_gio = data.get('danh_sach_gio')
+    ngay_bat_dau = data.get('ngayBatDau')
+    ngay_ket_thuc = data.get('ngayKetThuc')
+    lich_tuan = data.get('lichTuan', {})
 
-    if  not bacsi_id or not ngay_lam_viec or not danh_sach_gio:
-        return jsonify({'success': False, 'msg': 'Điền đầy đủ thông tin'})
-    success, msg = dao.add_schedule(bacsi_id,danh_sach_gio, ngay_lam_viec, )
-    return jsonify({'success': success, 'msg': msg})
+    if ngay_bat_dau is not None and ngay_ket_thuc is not None:
+        try:
+            ngay_bat_dau = datetime.strptime(ngay_bat_dau, "%Y-%m-%d").date()
+            ngay_ket_thuc = datetime.strptime(ngay_ket_thuc, "%Y-%m-%d").date()
+        except ValueError:
+            return jsonify({
+                "message": "Định dạng ngày bắt đầu / kết thúc không hợp lệ!",
+            }), 400
+    else:
+        return jsonify({"message": "Thiếu thông tin ngày tháng!"}), 400
 
+    try:
+        lich_moi = dao.tao_lich_lam_viec(ngay_bat_dau, ngay_ket_thuc)
 
-@app.route('/api/admin/chi-tiet-lich/<int:lich_id>', methods=['GET'])
-@login_required
-def api_chi_tiet_lich(lich_id):
-    if current_user.role != UserRole.ADMIN:
-        return jsonify({'success': False, 'msg': 'Bạn không có quyền!'})
+        day_map = {0: 'T2', 1: 'T3', 2: 'T4', 3: 'T5', 4: 'T6', 5: 'T7', 6: 'CN'}
 
-    data = dao.get_chi_tiet_lich_by_id(lich_id)
-    if data:
-        return jsonify({'success': True, 'data': data})
-    return jsonify({'success': False, 'msg': 'Không tìm thấy dữ liệu lịch này'})
+        current_date = ngay_bat_dau
+        while current_date <= ngay_ket_thuc:
+            thu_cua_ngay = day_map[current_date.weekday()]
+
+            # Kiểm tra xem "Thứ" này có được xếp ca nào trong payload gửi lên không
+            if thu_cua_ngay in lich_tuan:
+
+                # Tạo bản ghi NgayLamViec
+                dao.tao_ngay_lam_viec(current_date, lich_moi.id)
+
+                # Lấy danh sách các ca của ngày hôm đó. VD: {"1": [5, 8], "2": [12]}
+                danh_sach_ca = lich_tuan[thu_cua_ngay]
+
+                for ca_id_str, bac_si_ids in danh_sach_ca.items():
+                    ca_id = int(ca_id_str)
+
+                    for bs_id in bac_si_ids:
+                        # Gọi hàm tạo phân ca
+                        success, msg_or_obj = dao.tao_phan_ca(bs_id, ca_id, current_date)
+
+                        # Nếu logic DAO báo lỗi (trùng lặp, sai ID...), ném lỗi ra ngoài ngay
+                        if not success:
+                            raise ValueError(f"Lỗi ngày {current_date.strftime('%d/%m/%Y')} (Ca {ca_id}): {msg_or_obj}")
+
+            # Tiến lên 1 ngày
+            current_date += timedelta(days=1)
+
+        # 4. Lưu chính thức toàn bộ (Lịch, Ngày, Phân Ca) xuống Database
+        dao.commit()
+
+        return jsonify({
+            "message": "Tạo lịch thành công!",
+            "id_lich_moi": lich_moi.id
+        }), 200
+
+    except ValueError as ve:
+        return jsonify({"message": str(ve)}), 400
+
+    except Exception as e:
+        print("Lỗi server:", e)
+        return jsonify({"message": "Đã xảy ra lỗi. Thử lại sau!."}), 500
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_process():
@@ -103,7 +146,6 @@ def register():
         email = request.form.get("email")
 
         ngaysinh_form = request.form.get("ngaysinh")
-        print(ngaysinh_form)
         ngaysinh = None
         if ngaysinh_form:
             try:
@@ -129,6 +171,13 @@ def register():
 @login.user_loader
 def load_user(id):
     return dao.get_user_by_id(id)
+
+
+@app.route('/api/doctors')
+def api_get_doctors():
+    ds_bacsi_objects = dao.get_list_doctor()
+
+    return jsonify([bs.to_dict() for bs in ds_bacsi_objects])
 
 
 if __name__ == '__main__':
