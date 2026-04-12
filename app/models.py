@@ -59,6 +59,7 @@ class BenhNhan(BaseModel):
     ngaySinh = Column(Date, nullable=True)
     diaChi = Column(String(50), nullable=True)
     thoiGianMoKhoa = Column(DateTime, nullable=True)
+    ghiChu = Column(String(255), nullable=True)
 
     user = relationship('User', backref='Benhnhan', uselist=False)
 

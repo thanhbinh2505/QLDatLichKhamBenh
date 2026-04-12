@@ -7,7 +7,7 @@
             </div>
 
             <nav class="hidden lg:flex flex-1 justify-center space-x-4 lg:space-x-6 xl:space-x-8 px-4">
-                <a href="#" class="text-slate-600 hover:text-primary font-medium transition-colors whitespace-nowrap">Trang chủ</a>
+                <a href="/" class="text-slate-600 hover:text-primary font-medium transition-colors whitespace-nowrap">Trang chủ</a>
                 <a href="#we" class="text-slate-600 hover:text-primary font-medium transition-colors whitespace-nowrap">Về chúng tôi</a>
                 <a href="#services" class="text-slate-600 hover:text-primary font-medium transition-colors whitespace-nowrap">Chuyên khoa</a>
                 <a href="#doctors" class="text-slate-600 hover:text-primary font-medium transition-colors whitespace-nowrap">Đội ngũ bác sĩ</a>
@@ -34,14 +34,12 @@
                     {% elif current_user.role.name == 'BENHNHAN' %}
                         <a href="/hoso" class="hidden md:flex items-center gap-2 bg-blue-50 text-primary hover:bg-blue-100 px-4 py-2 lg:px-5 lg:py-2.5 rounded-xl font-medium transition-all whitespace-nowrap">
                             <i data-lucide="folder-clock" class="w-4 h-4"></i>
-                            Hồ sơ & Lịch khám
+                            Hồ sơ
                         </a>
                     {% endif %}
-
-                    <a href="/logout" title="Đăng xuất" class="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors flex-shrink-0">
-                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <a href="/logout" class="bg-primary hover:bg-primaryHover text-white px-6 py-2 rounded-full font-semibold text-lg transition-all shadow-lg shadow-primary/30 text-center">
+                        Đăng Xuất
                     </a>
-
                 {% else %}
                     <a href="/login" class="hidden sm:block text-slate-600 hover:text-primary font-semibold px-2 lg:px-4 py-2 transition-colors whitespace-nowrap">
                         Đăng nhập
@@ -51,13 +49,6 @@
                         Đăng ký
                     </a>
                 {% endif %}
-
-                <div class="hidden md:block w-px h-6 bg-gray-200 mx-1"></div>
-
-                <a href="#appointment" class="hidden md:flex bg-primary hover:bg-primaryHover text-white px-5 py-2.5 lg:px-6 rounded-full font-semibold transition-all shadow-md shadow-primary/30 items-center gap-2 whitespace-nowrap">
-                    <i data-lucide="calendar-plus" class="w-4 h-4"></i>
-                    Đặt lịch khám
-                </a>
 
             </div>
         </div>

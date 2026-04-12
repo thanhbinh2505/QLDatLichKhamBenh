@@ -1,0 +1,343 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Đặt lịch - MediCare{% endblock %}
+{%block footer%}
+{%endblock%}
+{% block content %}
+
+<style>
+    /* CSS cho thanh trượt và các trạng thái chọn */
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .date-card.active {
+        background-color: #1d4ed8; border-color: #1d4ed8; box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
+    }
+    .date-card.active .date-day { color: #bfdbfe; }
+    .date-card.active .date-date { color: #ffffff; }
+
+    .time-slot.selected {
+        background-color: #eff6ff; color: #1d4ed8; border-color: #1d4ed8; font-weight: 700; box-shadow: 0 0 0 1px #1d4ed8;
+    }
+    .time-slot.booked {
+        background-color: #f8fafc; color: #94a3b8; border-color: #e2e8f0; cursor: not-allowed; text-decoration: line-through; opacity: 0.7;
+    }
+</style>
+
+<div class="bg-lightBg min-h-screen pt-28 pb-16">
+
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 mb-6">
+        <nav class="flex text-sm text-primary font-medium">
+            <a href="/" class="hover:underline flex items-center gap-1">
+                <i data-lucide="home" class="w-4 h-4"></i>
+            </a>
+            <span class="mx-2 text-gray-400">/</span>
+            <a href="#" class="hover:underline">Khám chuyên khoa</a>
+        </nav>
+    </div>
+
+    <div class="max-w-5xl mx-auto px-4 sm:px-6">
+
+        <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm mb-6 flex flex-col sm:flex-row gap-4">
+            <div class="flex-1">
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Chọn chuyên khoa</label>
+                <select id="specialtySelect" class="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-slate-50 transition-all text-sm">
+                    <option value="all" selected>Tất cả chuyên khoa</option>
+                    <option value="Cơ Xương Khớp">Cơ Xương Khớp</option>
+                    <option value="Tim mạch">Tim mạch</option>
+                    <option value="Nhi khoa">Nhi khoa</option>
+                    <option value="Thần kinh">Thần kinh</option>
+                    <option value="Răng Hàm Mặt">Răng Hàm Mặt</option>
+                </select>
+            </div>
+            <div class="flex-1">
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Chọn bác sĩ</label>
+                <select id="doctorSelect" class="w-full p-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-slate-50 transition-all text-sm">
+                    <option value="">Đang tải...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="relative bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300">
+            <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-blue-50 rounded-full blur-3xl opacity-60"></div>
+
+            <div class="p-6 sm:p-8 flex flex-col md:flex-row gap-6 sm:gap-8 items-center md:items-start relative z-10">
+                <div class="shrink-0 relative">
+                    <div class="w-32 h-32 sm:w-40 sm:h-40 rounded-full p-1.5 bg-gradient-to-tr from-primary to-blue-200 shadow-md">
+                        <img id="docAvatar" src="" class="w-full h-full rounded-full object-cover border-4 border-white">
+                    </div>
+                    <div class="absolute bottom-2 right-4 bg-green-500 w-5 h-5 border-4 border-white rounded-full"></div>
+                </div>
+
+                <div class="flex-1 text-center md:text-left w-full">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
+                        <div>
+                            <h1 id="docName" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mb-2">Đang tải...</h1>
+                            <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 text-sm">
+                                <span id="docSpecialty" class="px-3 py-1 bg-blue-50 text-primary font-semibold rounded-lg">Đang tải...</span>
+                                <span class="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg flex items-center gap-1">
+                                    <i data-lucide="award" class="w-4 h-4"></i> Hơn 30 năm kinh nghiệm
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-center md:justify-start gap-2 text-slate-500 text-sm mb-6 font-medium">
+                        <i data-lucide="map-pin" class="w-4 h-4 text-red-500"></i>
+                        Thành phố Hồ Chí Minh
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+                        <button class="flex items-center justify-center gap-2 px-6 py-2.5 border-2 border-primary/20 text-primary rounded-xl font-semibold hover:bg-blue-50 hover:border-primary/50 transition-all">
+                            <i data-lucide="info" class="w-5 h-5"></i> Xem hồ sơ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 sm:p-8 mt-6">
+            <h2 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                <i data-lucide="calendar-check-2" class="w-6 h-6 text-primary"></i>
+                Chọn ngày & giờ khám
+            </h2>
+
+            <div class="mb-8">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm font-semibold text-slate-600 uppercase tracking-wide">Tháng <span id="currentMonthDisplay"></span></span>
+                    <div class="flex gap-2">
+                        <button onclick="scrollDate('left')" class="p-1 rounded-lg border border-gray-200 text-slate-500 hover:bg-slate-50"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                        <button onclick="scrollDate('right')" class="p-1 rounded-lg border border-gray-200 text-slate-500 hover:bg-slate-50"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+
+                <div id="dateSlider" class="flex overflow-x-auto gap-3 pb-2 scrollbar-hide snap-x scroll-smooth">
+                </div>
+            </div>
+
+            <div>
+                <div id="timeSlotsContainer" class="space-y-8 mb-8">
+                    <div class="relative">
+                        <div class="flex items-center gap-2 mb-4">
+                            <div class="p-2 bg-gradient-to-br from-orange-100 to-orange-50 text-orange-500 rounded-xl shadow-sm border border-orange-100">
+                                <i data-lucide="sun" class="w-5 h-5"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-slate-800">Buổi Sáng <span class="text-sm font-normal text-slate-500 ml-1">08:00 - 12:00</span></h4>
+                        </div>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">08:00 - 08:30</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">08:30 - 09:00</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">09:00 - 09:30</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">09:30 - 10:00</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">10:00 - 10:30</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">10:30 - 11:00</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">11:00 - 11:30</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">11:30 - 12:00</button>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <div class="flex items-center gap-2 mb-4">
+                            <div class="p-2 bg-gradient-to-br from-blue-100 to-blue-50 text-blue-500 rounded-xl shadow-sm border border-blue-100">
+                                <i data-lucide="sunset" class="w-5 h-5"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-slate-800">Buổi Chiều <span class="text-sm font-normal text-slate-500 ml-1">13:00 - 17:00</span></h4>
+                        </div>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">13:00 - 13:30</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">13:30 - 14:00</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">14:00 - 14:30</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">14:30 - 15:00</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">15:00 - 15:30</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">15:30 - 16:00</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">16:00 - 16:30</button>
+                            <button type="button" class="time-slot bg-white border border-gray-200 hover:border-primary hover:text-primary text-slate-700 py-3 px-2 rounded-xl text-sm font-medium transition-all text-center shadow-sm">16:30 - 17:00</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center text-sm text-slate-500 gap-1.5 border-t border-gray-100 pt-6">
+                    <i data-lucide="info" class="w-4 h-4 text-blue-500"></i>
+                    Nhấp vào ngày và khung giờ bạn muốn chọn. Phí đặt lịch: <strong class="text-green-600">Miễn phí</strong>
+                </div>
+
+                <div id="bookingAction" class="hidden mt-6 bg-gradient-to-r from-blue-50 to-white p-5 sm:p-6 rounded-2xl border border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-md transition-all">
+                    <div>
+                        <p class="text-sm font-medium text-slate-500 mb-1">Thời gian bạn đã chọn:</p>
+                        <p id="selectedTimeText" class="font-extrabold text-primary text-xl flex items-center gap-2">
+                            <i data-lucide="clock-4" class="w-6 h-6"></i>
+                            <span></span>
+                        </p>
+                    </div>
+                    <form method="POST" action="/dat-lich" class="w-full sm:w-auto">
+                        <input type="hidden" name="bacsi_id" id="inputBacSiId" value="">
+                        <input type="hidden" name="ngay_kham" id="inputDate">
+                        <input type="hidden" name="gio_kham" id="inputTime">
+
+                        <button type="submit" class="w-full sm:w-auto bg-primary hover:bg-primaryHover text-white px-8 py-3.5 rounded-xl font-bold shadow-btn transition-all flex items-center justify-center gap-2 transform hover:-translate-y-1">
+                            Xác nhận đặt khám <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // ==========================================
+        // 1. CHỨC NĂNG LẤY DANH SÁCH BÁC SĨ (API)
+        // ==========================================
+        let allDoctors = [];
+        const specialtySelect = document.getElementById('specialtySelect');
+        const doctorSelect = document.getElementById('doctorSelect');
+        const docName = document.getElementById('docName');
+        const docSpecialty = document.getElementById('docSpecialty');
+        const docAvatar = document.getElementById('docAvatar');
+        const inputBacSiId = document.getElementById('inputBacSiId');
+
+        async function fetchDoctors() {
+            try {
+                const response = await fetch('/api/doctors');
+                if (!response.ok) throw new Error("Lỗi mạng");
+                allDoctors = await response.json();
+                populateDoctorDropdown(specialtySelect.value); // Lọc theo Khoa đang chọn sẵn
+            } catch (error) {
+                console.error("Lỗi:", error);
+                doctorSelect.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
+            }
+        }
+
+        function populateDoctorDropdown(specialtyFilter) {
+            doctorSelect.innerHTML = '';
+            let filteredDoctors = allDoctors;
+
+            // So sánh phải giống chính xác (VD: "Nhi khoa" === "Nhi khoa")
+            if (specialtyFilter !== 'all') {
+                filteredDoctors = allDoctors.filter(doc => doc.chuyenKhoa === specialtyFilter);
+            }
+
+            if (filteredDoctors.length === 0) {
+                doctorSelect.innerHTML = '<option value="">Không có bác sĩ</option>';
+                updateDoctorCard(null);
+                return;
+            }
+
+            filteredDoctors.forEach(doc => {
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = `BS. ${doc.hoTen} - Khoa ${doc.chuyenKhoa}`;
+                doctorSelect.appendChild(option);
+            });
+
+            updateDoctorCard(filteredDoctors[0]);
+        }
+
+        function updateDoctorCard(doctor) {
+            if (!doctor) {
+                docName.textContent = "Không tìm thấy";
+                docSpecialty.textContent = "N/A";
+                docAvatar.src = "";
+                inputBacSiId.value = "";
+                return;
+            }
+            docName.textContent = `BS. ${doctor.hoTen}`;
+            docSpecialty.textContent = doctor.chuyenKhoa;
+            docAvatar.src = doctor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.hoTen)}&background=e0f2fe&color=0284c7&size=200`;
+            inputBacSiId.value = doctor.id;
+        }
+
+        specialtySelect.addEventListener('change', function() {
+            populateDoctorDropdown(this.value);
+        });
+
+        doctorSelect.addEventListener('change', function() {
+            const selectedDoctor = allDoctors.find(doc => doc.id === parseInt(this.value));
+            updateDoctorCard(selectedDoctor);
+        });
+
+        // Bắt đầu gọi API Bác sĩ
+        fetchDoctors();
+
+        // ==========================================
+        // 2. CHỨC NĂNG RENDER NGÀY THÁNG VÀ CHỌN GIỜ
+        // ==========================================
+        const dateSlider = document.getElementById('dateSlider');
+        const currentMonthDisplay = document.getElementById('currentMonthDisplay');
+        const inputDate = document.getElementById('inputDate');
+        const inputTime = document.getElementById('inputTime');
+        const bookingAction = document.getElementById('bookingAction');
+        const selectedTimeSpan = document.querySelector('#selectedTimeText span');
+        const timeSlots = document.querySelectorAll('.time-slot');
+
+        const daysOfWeek = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+        const today = new Date();
+        currentMonthDisplay.innerText = (today.getMonth() + 1) + '/' + today.getFullYear();
+
+        let activeDateCard = null;
+
+        for (let i = 0; i < 30; i++) {
+            let nextDate = new Date();
+            nextDate.setDate(today.getDate() + i);
+
+            let dayName = i === 0 ? "Hôm nay" : daysOfWeek[nextDate.getDay()];
+            let dateNum = nextDate.getDate().toString().padStart(2, '0');
+            let monthNum = (nextDate.getMonth() + 1).toString().padStart(2, '0');
+            let optionValue = `${nextDate.getFullYear()}-${monthNum}-${dateNum}`;
+
+            let card = document.createElement('button');
+            card.type = "button";
+            card.className = "date-card snap-center shrink-0 flex flex-col items-center justify-center min-w-[80px] p-3 rounded-2xl border border-gray-200 bg-white cursor-pointer transition-all hover:border-primary group";
+            card.dataset.value = optionValue;
+            card.dataset.text = `${dateNum}/${monthNum}`;
+
+            card.innerHTML = `
+                <span class="date-day text-xs font-bold text-slate-400 mb-1 group-hover:text-primary transition-colors uppercase">${dayName}</span>
+                <span class="date-date text-xl font-extrabold text-slate-800 transition-colors">${dateNum}</span>
+            `;
+
+            if (i === 0) {
+                card.classList.add('active');
+                activeDateCard = card;
+                inputDate.value = optionValue;
+            }
+
+            card.addEventListener('click', function() {
+                if (activeDateCard) activeDateCard.classList.remove('active');
+                this.classList.add('active');
+                activeDateCard = this;
+                inputDate.value = this.dataset.value;
+
+                // Reset giờ
+                timeSlots.forEach(s => s.classList.remove('selected'));
+                bookingAction.classList.add('hidden');
+                bookingAction.classList.remove('flex');
+                inputTime.value = "";
+            });
+
+            dateSlider.appendChild(card);
+        }
+
+        window.scrollDate = function(direction) {
+            dateSlider.scrollBy({ left: direction === 'left' ? -250 : 250, behavior: 'smooth' });
+        }
+
+        timeSlots.forEach(slot => {
+            slot.addEventListener('click', function() {
+                timeSlots.forEach(s => s.classList.remove('selected'));
+                this.classList.add('selected');
+
+                let timeText = this.innerText.trim();
+                inputTime.value = timeText;
+
+                selectedTimeSpan.innerText = `${timeText} | Ngày ${activeDateCard.dataset.text}`;
+
+                bookingAction.classList.remove('hidden');
+                bookingAction.classList.add('flex');
+                bookingAction.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            });
+        });
+    });
+</script>
+{% endblock %}

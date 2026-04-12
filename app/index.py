@@ -15,9 +15,11 @@ def index():
 @app.route('/admin')
 @login_required
 def admin():
-
     return render_template('admin.html', active_tab="lich_lam_viec")
 
+@app.route('/dat-lich')
+def dat_lich():
+    return render_template('dat_lich.html')
 
 @app.route('/admin/tao-lich', methods=['GET'])
 @login_required
