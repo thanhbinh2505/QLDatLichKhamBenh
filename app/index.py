@@ -1,11 +1,10 @@
 from flask import render_template, request, url_for, jsonify
 from sqlalchemy.testing.exclusions import succeeds_if
 from werkzeug.utils import redirect
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from flask_login import login_user, logout_user, login_required, current_user
 from app import app, dao, login
 from app.models import UserRole, CaLam, LichLamViec, NgayLamViec, PhanCa
-
 
 @app.route('/')
 def index():
@@ -15,11 +14,75 @@ def index():
 @app.route('/admin')
 @login_required
 def admin():
-    return render_template('admin.html', active_tab="lich_lam_viec")
 
+    ds_ca = dao.get_list_shift()
+
+    ngay_hom_nay = date.today()
+    thu_cua_hom_nay = ngay_hom_nay.weekday()
+    thu_2_cua_tuan_hien_tai = ngay_hom_nay - timedelta(days= thu_cua_hom_nay )
+    cn_cua_tuan_hien_tai = thu_2_cua_tuan_hien_tai + timedelta(days= 6)
+
+    return render_template('admin.html',
+                           active_tab="lich_lam_viec",
+                           ds_calam = ds_ca,
+                           thu_2=thu_2_cua_tuan_hien_tai.strftime('%Y-%m-%d'),
+                           chu_nhat=cn_cua_tuan_hien_tai.strftime('%Y-%m-%d'),
+                           )
 @app.route('/dat-lich')
 def dat_lich():
     return render_template('dat_lich.html')
+  
+@app.route('/api/admin/lay-lich-tuan', methods=['GET'])
+def api_lay_lich_tuan():
+    start_str = request.args.get('ngayBatDau')
+    end_str = request.args.get('ngayKetThuc')
+
+    if not start_str or not end_str:
+        return jsonify({"message": "Thiếu tham số ngayBatDau hoặc ngayKetThuc"}), 400
+
+    try:
+        ngay_bat_dau = datetime.strptime(start_str, "%Y-%m-%d").date()
+        ngay_ket_thuc = datetime.strptime(end_str, "%Y-%m-%d").date()
+
+        if ngay_bat_dau.weekday() != 0:
+            return jsonify({"message": f"Ngày bắt đầu ({start_str}) phải là Thứ 2."}), 400
+
+        if ngay_ket_thuc.weekday() != 6:
+            return jsonify({"message": f"Ngày kết thúc ({end_str}) phải là Chủ nhật."}), 400
+
+        if (ngay_ket_thuc - ngay_bat_dau).days != 6:
+            return jsonify({"message": "Khoảng thời gian phải đúng 1 tuần (7 ngày)."}), 400
+
+        ds_ngay_lam_viec = dao.lay_ngay_lam_viec(ngay_bat_dau, ngay_ket_thuc)
+
+        day_map = {0: 'T2', 1: 'T3', 2: 'T4', 3: 'T5', 4: 'T6', 5: 'T7', 6: 'CN'}
+        lich_tuan = {}
+
+        for ngay_lam_viec in ds_ngay_lam_viec:
+            thu = day_map[ngay_lam_viec.ngay.weekday()]
+            lich_tuan[thu] = {}
+
+            ds_phan_ca = dao.lay_danh_sach_phan_ca(ngay_lam_viec.ngay)
+
+            for pc in ds_phan_ca:
+                ca_id_str = str(pc.id_CaLam)
+                bs_id = pc.id_BacSi
+
+                if ca_id_str not in lich_tuan[thu]:
+                    lich_tuan[thu][ca_id_str] = []
+
+                lich_tuan[thu][ca_id_str].append(bs_id)
+
+        return jsonify({
+            "message": "Lấy lịch thành công",
+            "data": lich_tuan
+        }), 200
+
+    except ValueError as ve:
+        return jsonify({"message": str(ve)}), 400
+    except Exception as e:
+        print("Lỗi API lấy lịch tuần:", e)
+        return jsonify({"message": "Đã xảy ra lỗi hệ thống."}), 500
 
 @app.route('/admin/tao-lich', methods=['GET'])
 @login_required
@@ -34,10 +97,6 @@ def admin_page_tao_lich():
                            ngay_bat_dau_goi_y=ngay_bat_dau_goi_y.strftime('%Y-%m-%d'),
                            ngay_ket_thuc_goi_y=ngay_ket_thuc_goi_y.strftime('%Y-%m-%d')
                            )
-
-
-from flask import request, jsonify
-
 
 @app.route('/api/admin/luu-lich-lam-viec', methods=['POST'])
 def api_tao_lich_moi():
@@ -66,30 +125,23 @@ def api_tao_lich_moi():
         while current_date <= ngay_ket_thuc:
             thu_cua_ngay = day_map[current_date.weekday()]
 
-            # Kiểm tra xem "Thứ" này có được xếp ca nào trong payload gửi lên không
             if thu_cua_ngay in lich_tuan:
 
-                # Tạo bản ghi NgayLamViec
                 dao.tao_ngay_lam_viec(current_date, lich_moi.id)
 
-                # Lấy danh sách các ca của ngày hôm đó. VD: {"1": [5, 8], "2": [12]}
                 danh_sach_ca = lich_tuan[thu_cua_ngay]
 
                 for ca_id_str, bac_si_ids in danh_sach_ca.items():
                     ca_id = int(ca_id_str)
 
                     for bs_id in bac_si_ids:
-                        # Gọi hàm tạo phân ca
                         success, msg_or_obj = dao.tao_phan_ca(bs_id, ca_id, current_date)
 
-                        # Nếu logic DAO báo lỗi (trùng lặp, sai ID...), ném lỗi ra ngoài ngay
                         if not success:
                             raise ValueError(f"Lỗi ngày {current_date.strftime('%d/%m/%Y')} (Ca {ca_id}): {msg_or_obj}")
 
-            # Tiến lên 1 ngày
             current_date += timedelta(days=1)
 
-        # 4. Lưu chính thức toàn bộ (Lịch, Ngày, Phân Ca) xuống Database
         dao.commit()
 
         return jsonify({

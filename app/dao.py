@@ -103,6 +103,28 @@ def get_ngay_chua_sap_lich_gan_nhat():
 
     return ngay_tiep_theo
 
+def lay_ngay_lam_viec(ngay_bat_dau, ngay_ket_thuc):
+    if not isinstance(ngay_bat_dau, date) or not isinstance(ngay_ket_thuc, date):
+        raise ValueError("ngay_bat_dau và ngay_ket_thuc phải là kiểu datetime.date")
+
+    if ngay_ket_thuc < ngay_bat_dau:
+        raise ValueError("Ngày kết thúc không thể nhỏ hơn ngày bắt đầu")
+
+    ds_ngay_lam_viec = db.session.query(NgayLamViec).filter(
+        NgayLamViec.ngay >= ngay_bat_dau,
+        NgayLamViec.ngay <= ngay_ket_thuc
+    ).order_by(NgayLamViec.ngay).all()
+
+    return ds_ngay_lam_viec
+
+def lay_danh_sach_phan_ca(ngay):
+    ngay_lam_viec = NgayLamViec.query.get(ngay)
+
+    if not ngay_lam_viec:
+        return []
+
+    return ngay_lam_viec.danh_sach_phan_ca
+
 def tao_lich_lam_viec(ngay_bat_dau, ngay_ket_thuc):
 
     if ngay_bat_dau is None or ngay_ket_thuc is None:
@@ -181,81 +203,3 @@ def tao_phan_ca(id_bacsi, id_calam, thuoc_ngay):
         db.session.rollback()
         print(f"Lỗi tại tao_phan_ca: {str(e)}")
         return False, "Có lỗi xảy ra trong quá trình lưu dữ liệu."
-
-# def get_so_ca_lam(time_range = 'all', kw = None):
-#     query = db.session.query(
-#        LichLamViec,
-#         BacSi,
-#         User,
-#         func.count(PhieuDatLich.id).label('count')
-#     ).join(BacSi,LichLamViec.bacsi_id == BacSi.id) \
-#     .join(User, BacSi.user_id == User.id) \
-#     .outerjoin(KhungGio, LichLamViec.id == KhungGio.lich_id) \
-#     .outerjoin(PhieuDatLich, KhungGio.id == PhieuDatLich.khunggio_id)
-#     if kw:
-#         query = query.filter(User.hoTen.ilike(f'%{kw}%'))
-#     today = date.today()
-#     if time_range == 'today':
-#         query = query.filter(LichLamViec.ngayLamViec == today)
-#     elif time_range == 'week':
-#         startWeek = today - timedelta(days=today.weekday())
-#         endWeek = startWeek + timedelta(days=6)
-#         query = query.filter(LichLamViec.ngayLamViec >= startWeek,
-#                              LichLamViec.ngayLamViec<=endWeek)
-#
-#     return query.group_by(LichLamViec.id, BacSi.id, User.id).order_by(LichLamViec.ngayLamViec.desc()).all()
-#
-# def add_schedule(bacsi_id, ds_gio, ngay_lam_viec):
-#     try:
-#         schedule = datetime.strptime(ngay_lam_viec, '%Y-%m-%d').date()
-#
-#         lich = LichLamViec.query.filter_by(bacsi_id = bacsi_id,
-#                                         ngayLamViec = ngay_lam_viec
-#                                         ).first()
-#
-#         if not lich:
-#             lich = LichLamViec(bacsi_id=bacsi_id,
-#                                             ngayLamViec=ngay_lam_viec)
-#             db.session.add(lich)
-#             db.session.flush()
-#         so_ca_lam = KhungGio.query.filter_by(lich_id = lich.id).count() if lich.id else 0
-#
-#         if so_ca_lam + len(ds_gio) > 20:
-#             return False, f"Vượt quá giới hạn! Ngày này bác sĩ đã có {so_ca_lam} ca, bạn chỉ được thêm tối đa {20 - so_ca_lam} ca nữa."
-#
-#         khung_gio_da_co = []
-#
-#         if lich.id:
-#             khung_gio_cu = KhungGio.query.filter_by(lich_id = lich.id).all()
-#             khung_gio_da_co = [kg.startTime.strftime('%H:%M') for kg in khung_gio_cu]
-#
-#         for g in ds_gio:
-#             if g in khung_gio_da_co:
-#                 db.session.rollback()
-#                 return False, "Khung giờ này không còn trống. Vui lòng chọn khung giờ khác!!!"
-#             # Tính toán giờ kết thúc (+30 phút)
-#             gio, phut = map(int, g.split(':'))
-#             start_time = time(gio, phut)
-#
-#             phut_end = phut + 30
-#             gio_end = gio
-#             if phut_end >= 60:
-#                 phut_end -= 60
-#                 gio_end += 1
-#             end_time = time(gio_end, phut_end)
-#
-#             # Tạo khung giờ mới
-#             khung_gio_moi = KhungGio(
-#                 lich_id=lich.id,
-#                 startTime=start_time,
-#                 endTime=end_time
-#             )
-#             db.session.add(khung_gio_moi)
-#         db.session.commit()
-#         return True, "Cập nhật lịch làm việc thành công!"
-#     except Exception as e:
-#         db.session.rollback()
-#         return False, str(e)
-#
-
-# Thêm Status vào phần import ở đầu file dao.py
