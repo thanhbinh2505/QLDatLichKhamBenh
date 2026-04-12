@@ -197,7 +197,7 @@ if __name__ == '__main__':
             for i in range(1, 11):
                 user = User(
                     username=f'benhnhan_{i}',
-                    hoTen=f'Nguyễn Văn Bệnh Nhân {i}',
+                    hoTen=f' Bệnh Nhân {i}',
                     email=f'benhnhan{i}@gmail.com',
                     gioiTinh=random.choice([True, False]),
                     role=UserRole.BENHNHAN
@@ -222,7 +222,7 @@ if __name__ == '__main__':
             for i in range(1, 11):
                 user = User(
                     username=f'bacsi_{i}',
-                    hoTen=f'Trần Thị Bác Sĩ {i}',
+                    hoTen=f'Bác Sĩ {i}',
                     email=f'bacsi{i}@hospital.com',
                     gioiTinh=random.choice([True, False]),
                     role=UserRole.BACSI

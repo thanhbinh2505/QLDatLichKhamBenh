@@ -1,6 +1,6 @@
 from datetime import datetime, time, date, timedelta
 
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, or_
 
 from app import app, db
 from app.models import User, BenhNhan, BacSi, PhieuDatLich, LichLamViec, TrangThaiLichHen, UserRole, CaLam, NgayLamViec, PhanCa
@@ -65,11 +65,9 @@ def them_benhnhan(username, hoten, email, gioitinh, password, ngaysinh=None, dia
         db.session.rollback()
         raise e
 
-def auth_user(username, password):
-    u = User.query.filter(User.username.__eq__(username)).first()
-    if u and u.check_password(password):
-        return u
-    return None
+def get_user_by_email_username(identifier):
+    u = User.query.filter(or_(User.email == identifier, User.username == identifier)).first()
+    return u
 
 def get_user_by_id(id):
     return User.query.get(id)

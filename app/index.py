@@ -156,23 +156,29 @@ def api_tao_lich_moi():
 @app.route('/login', methods=['GET', 'POST'])
 def login_process():
     error_msg = ""
-    if request.method == ('POST'):
-        username = request.form.get("username")
-        password = request.form.get("password")
+    username_val = ""
 
-        user = dao.auth_user(username=username, password=password)
-        if user:
-            login_user(user=user)
+    if request.method == ('POST'):
+        username_or_email = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+
+        user = dao.get_user_by_email_username(username_or_email)
+        if not user:
+            error_msg = "Username hoặc email không tồn tại!"
+            username_val = ""
+        elif not user.check_password(password):
+            error_msg = "Mật khẩu không chính xác!"
+            username_val = username_or_email
+        else:
+            login_user(user = user)
             if user.role == UserRole.ADMIN:
                 return redirect('/admin')
             elif user.role == UserRole.BACSI:
                 return redirect('/bacsi')
             elif user.role == UserRole.BENHNHAN:
                 return redirect('/')
-        else:
-            error_msg = "Tài khoản hoặc mật khẩu không chính xác!"
 
-    return render_template('login.html', error=error_msg)
+    return render_template('login.html', error=error_msg, username_val=username_val)
 
 @app.route('/logout', methods=['GET', 'POST'])
 def logout_process():
