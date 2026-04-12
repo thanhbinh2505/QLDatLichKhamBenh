@@ -76,13 +76,13 @@ function renderAllCells() {
 
         const rowHtml = `
             <div class="grid grid-cols-[110px_repeat(7,1fr)] flex-1">
-                <div class="p-3 border-r border-gray-200 flex flex-col items-center justify-center gap-1.5 bg-blue-50/30">
+                <div class="p-3 border-r border-b border-gray-200 flex flex-col items-center justify-center gap-1.5 bg-blue-50/30">
                     <span class="font-bold text-slate-700 text-sm text-center">${ca.tenCa}</span>
                     <span class="text-xs font-medium text-slate-500">${ca.gioBatDau} - ${ca.gioKetThuc}</span>
                 </div>
 
                 ${days.map(day => `
-                    <div id="cell-${day.id}-${ca.id}" class="p-2 border-r border-gray-200 relative group transition-colors">
+                    <div id="cell-${day.id}-${ca.id}" class="p-2 border-r border-b border-gray-200 relative group transition-colors">
                         </div>
                 `).join('')}
             </div>
@@ -122,7 +122,7 @@ function updateCellContent(dayId, shiftId) {
             html += `
                 <div class="flex items-center gap-2 bg-blue-50 text-primary pl-1 pr-2 py-1.5 rounded-lg border border-blue-200 shadow-sm w-full xl:w-auto">
                     <img src="${doc.avatar}" class="w-6 h-6 rounded-full border border-white object-cover" alt="avatar"/>
-                    <span class="font-medium text-[13px] whitespace-nowrap truncate flex-1">${doc.hoTen}</span>
+                    <span class="font-medium text-[13px] whitespace-nowrap truncate flex-1">BS.${doc.hoTen}</span>
                     <button onclick="removeDoctor(event, '${dayId}', ${shiftId}, ${doc.id})"
                             class="p-0.5 rounded-md hover:bg-blue-200 text-blue-400 hover:text-red-500 transition-colors shrink-0">
                         <i data-lucide="x" class="w-3.5 h-3.5"></i>
@@ -190,14 +190,6 @@ function renderPopoverList(searchTerm = '') {
         (doc.hoTen && doc.hoTen.toLowerCase().includes(searchTerm)) ||
         (doc.chuyenKhoa && doc.chuyenKhoa.toLowerCase().includes(searchTerm))
     );
-
-    filteredDocs.sort((a, b) => {
-        const aSelected = tempSelectedDoctors.has(a.id);
-        const bSelected = tempSelectedDoctors.has(b.id);
-        if (aSelected && !bSelected) return -1;
-        if (!aSelected && bSelected) return 1;
-        return 0;
-    });
 
     if (filteredDocs.length === 0) {
         listContainer.innerHTML = `<div class="p-4 text-center text-sm text-gray-500">Không tìm thấy bác sĩ nào.</div>`;
@@ -290,9 +282,9 @@ async function saveSchedule() {
         }
 
         // Nếu ngày đó không có ca nào được xếp, xóa luôn key ngày đó cho JSON sạch sẽ
-        if (Object.keys(lichTuan[dayId]).length === 0) {
-            delete lichTuan[dayId];
-        }
+//        if (Object.keys(lichTuan[dayId]).length === 0) {
+//            delete lichTuan[dayId];
+//        }
     }
 
     if (!hasData) {

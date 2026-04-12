@@ -151,96 +151,145 @@ class PhieuDatLich(BaseModel):
 class KhungGio(BaseModel):
     __tablename__ = 'khunggio'
 
-    # lich_id = Column(Integer, ForeignKey('lichlamviec.id'), nullable=False)
-
     startTime = Column(Time, nullable=False)
     endTime = Column(Time, nullable=False)
-
-    # lich_lam_viec = relationship('LichLamViec', backref='KhungGio', lazy=True)
 
 if __name__ == '__main__':
     with app.app_context():
         db.drop_all()
         db.create_all()
 
-        ca_sang = CaLam(
-            tenCa="Ca Sáng",
-            gioBatDau=time(8, 0),
-            gioKetThuc=time(12, 0)
-        )
+        from datetime import datetime, timedelta, date, time
+        from werkzeug.security import generate_password_hash
+        import random
 
-        # 2. Tạo ca chiều: 13:00 - 17:00
-        ca_chieu = CaLam(
-            tenCa="Ca Chiều",
-            gioBatDau=time(13, 0),
-            gioKetThuc=time(17, 0)
-        )
 
-        lich_mau = LichLamViec(
-            ngayBatDau=date(2026, 4, 13),
-            ngayKetThuc=date(2026, 4, 19)
-        )
+        # Tùy thuộc vào project của bạn, hãy import db và các Models ở đây
+        # from your_application import db
+        # from your_models import User, Admin, BenhNhan, BacSi, CaLam, LichLamViec, NgayLamViec, PhanCa, UserRole, TrangThaiBacSi
 
-        db.session.add(ca_sang)
-        db.session.add(ca_chieu)
-        db.session.add(lich_mau)
+        def create_mock_data():
+            print("Bắt đầu tạo dữ liệu mẫu...")
 
-        u_admin = User(
-            username= "admin",
-            hoTen="Nguyễn Thanh Bình",
-            email="thanhbinhlb2505@gmail.com",
-            gioiTinh=True,
-            role=UserRole.ADMIN
-        )
-        u_admin.set_password('123456')
-        db.session.add(u_admin)
-        db.session.commit()
+            # Mật khẩu chung cho tất cả các user là '123456'
+            default_password = '123456'
 
-        doctors_data = [
-            {
-                "username": "bs_minhanh",
-                "hoTen": "Nguyễn Minh Anh",
-                "email": "minhanh.nguyen@gmail.com",
-                "chuyenKhoa": "Nhi khoa"
-            },
-            {
-                "username": "bs_hoangquan",
-                "hoTen": "Lê Hoàng Quân",
-                "email": "quan.lehoang@gmail.com",
-                "chuyenKhoa": "Tim mạch"
-            },
-            {
-                "username": "bs_phuongthao",
-                "hoTen": "Trần Phương Thảo",
-                "email": "thaotp.nha@gmail.com",
-                "chuyenKhoa": "Răng Hàm Mặt"
-            }
-        ]
+            # 1. TẠO 2 ADMIN
+            print("Đang tạo Admin...")
+            for i in range(1, 3):
+                user = User(
+                    username=f'admin_{i}',
+                    hoTen=f'Quản trị viên {i}',
+                    email=f'admin{i}@hospital.com',
+                    gioiTinh=True,
+                    role=UserRole.ADMIN
+                )
 
-        for data in doctors_data:
-            # Kiểm tra xem user đã tồn tại chưa để tránh lỗi trùng lặp (unique)
-            exists = User.query.filter_by(username=data["username"]).first()
-            if not exists:
-                # Bước A: Tạo tài khoản User để đăng nhập
-                new_user = User(
-                    username=data["username"],
-                    hoTen=data["hoTen"],
-                    email=data["email"],
-                    gioiTinh=True,  # Mặc định Nam/Nữ tùy bạn
+                user.set_password(default_password)
+                db.session.add(user)
+                db.session.flush()  # Flush để lấy user.id
+
+                admin = Admin(user_id=user.id)
+                db.session.add(admin)
+
+            # 2. TẠO 10 BỆNH NHÂN
+            print("Đang tạo Bệnh nhân...")
+            for i in range(1, 11):
+                user = User(
+                    username=f'benhnhan_{i}',
+                    hoTen=f'Nguyễn Văn Bệnh Nhân {i}',
+                    email=f'benhnhan{i}@gmail.com',
+                    gioiTinh=random.choice([True, False]),
+                    role=UserRole.BENHNHAN
+                )
+                user.set_password(default_password)
+
+                db.session.add(user)
+                db.session.flush()
+
+                benh_nhan = BenhNhan(
+                    user_id=user.id,
+                    ngaySinh=date(1980 + random.randint(0, 30), random.randint(1, 12), random.randint(1, 28)),
+                    diaChi=f'Số {i} Đường ABC, Quận {random.randint(1, 10)}, TP.HCM'
+                )
+                db.session.add(benh_nhan)
+
+            # 3. TẠO 10 BÁC SĨ
+            print("Đang tạo Bác sĩ...")
+            chuyen_khoa_list = ['Nội khoa', 'Ngoại khoa', 'Nhi khoa', 'Da liễu', 'Răng Hàm Mặt', 'Mắt', 'Tai Mũi Họng']
+            danh_sach_bac_si = []
+
+            for i in range(1, 11):
+                user = User(
+                    username=f'bacsi_{i}',
+                    hoTen=f'Trần Thị Bác Sĩ {i}',
+                    email=f'bacsi{i}@hospital.com',
+                    gioiTinh=random.choice([True, False]),
                     role=UserRole.BACSI
                 )
-                new_user.set_password("123456")  # Mật khẩu mặc định
+                user.set_password(default_password)
+                db.session.add(user)
+                db.session.flush()
 
-                db.session.add(new_user)
-                db.session.flush()  # Lấy ID của user vừa tạo để gán cho bác sĩ
-
-                # Bước B: Tạo thông tin chuyên khoa trong bảng BacSi
-                new_doctor = BacSi(
-                    user_id=new_user.id,
-                    chuyenKhoa=data["chuyenKhoa"],
+                bac_si = BacSi(
+                    user_id=user.id,
+                    chuyenKhoa=random.choice(chuyen_khoa_list)
                 )
-                db.session.add(new_doctor)
+                db.session.add(bac_si)
+                danh_sach_bac_si.append(bac_si)
 
-        # Lưu tất cả vào Database
-        db.session.commit()
-        # 1. Lấy thông tin bệnh nhân và khung giờ để test
+            # 4. TẠO CA LÀM (Sáng, Chiều)
+            print("Đang tạo Ca làm...")
+            ca_sang = CaLam(tenCa='Ca Sáng', gioBatDau=time(8, 0), gioKetThuc=time(12, 00))
+            ca_chieu = CaLam(tenCa='Ca Chiều', gioBatDau=time(13, 0), gioKetThuc=time(17, 0))
+            db.session.add_all([ca_sang, ca_chieu])
+            db.session.flush()
+            ca_lam_list = [ca_sang, ca_chieu]
+
+            # 5. TẠO LỊCH LÀM VIỆC CHO 1 THÁNG TỚI
+            print("Đang tạo Lịch làm việc và Phân ca...")
+            today = date.today()
+            next_month = today + timedelta(days=30)
+
+            lich_lam_viec = LichLamViec(ngayBatDau=today, ngayKetThuc=next_month)
+            db.session.add(lich_lam_viec)
+            db.session.flush()
+
+            # Tạo các ngày làm việc và phân ca cho từng ngày
+            for i in range(31):  # 0 đến 30 ngày
+                current_date = today + timedelta(days=i)
+
+                # Tạo bản ghi Ngày Làm Việc
+                ngay_lam_viec = NgayLamViec(ngay=current_date, id_LichLamViec=lich_lam_viec.id)
+                db.session.add(ngay_lam_viec)
+                db.session.flush()
+
+                # Phân ca ngẫu nhiên cho các bác sĩ trong ngày hôm đó
+                for bs in danh_sach_bac_si:
+                    # Random xem bác sĩ này hôm nay làm mấy ca (0 = nghỉ, 1 = làm 1 ca, 2 = làm cả ngày)
+                    so_ca_lam = random.randint(0, 2)
+
+                    if so_ca_lam > 0:
+                        # Random chọn ca (nếu làm 1 ca thì chọn ngẫu nhiên sáng/chiều, 2 ca thì chọn cả 2)
+                        ca_duoc_chon = random.sample(ca_lam_list, so_ca_lam)
+
+                        for ca in ca_duoc_chon:
+                            phan_ca = PhanCa(
+                                id_BacSi=bs.id,
+                                thuocNgay=ngay_lam_viec.ngay,
+                                id_CaLam=ca.id,
+                                trangThai=TrangThaiBacSi.HoatDong
+                            )
+                            db.session.add(phan_ca)
+
+            # LƯU VÀO DATABASE
+            try:
+                db.session.commit()
+                print("Đã tạo dữ liệu thành công! 2 Admin, 10 Bệnh nhân, 10 Bác sĩ và 1 tháng lịch làm việc.")
+            except Exception as e:
+                db.session.rollback()
+                print(f"Có lỗi xảy ra: {e}")
+
+        # Chạy hàm (Đảm bảo chạy trong context của Flask)
+        # with app.app_context():
+        create_mock_data()

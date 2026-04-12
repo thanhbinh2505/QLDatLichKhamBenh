@@ -1,130 +1,207 @@
+let doctorsList = [];
+let scheduleData = {};
+const daysOfWeek = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
-    function submitTaoLich() {
-        const bacsi_id = document.getElementById('bacsiSelect').value;
-        const ngay_lam_viec = document.getElementById('ngayLamViec').value;
+let thu2HienTai
+let chuNhatHienTai
 
-        const checkedBoxes = document.querySelectorAll('.khung-gio-cb:checked');
-        const danh_sach_gio = Array.from(checkedBoxes).map(cb => cb.value);
+document.addEventListener('DOMContentLoaded', async () => {
 
-        if (!bacsi_id) { alert("Vui lòng chọn bác sĩ!"); return; }
-        if (!ngay_lam_viec) { alert("Vui lòng chọn ngày làm việc!"); return; }
-        if (danh_sach_gio.length === 0) { alert("Vui lòng chọn ít nhất 1 khung giờ!"); return; }
+    thu2HienTai = new Date(thu2)
+    chuNhatHienTai = new Date(chuNhat)
 
-        fetch('/api/admin/tao-lich', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                bacsi_id: bacsi_id,
-                ngay_lam_viec: ngay_lam_viec,
-                danh_sach_gio: danh_sach_gio
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.msg);
-                location.reload()
+    try {
+        const [doctorsRes, scheduleRes] = await Promise.all([
+            fetch('/api/doctors'),
+            fetch(`/api/admin/lay-lich-tuan?ngayBatDau=${thu2}&ngayKetThuc=${chuNhat}`)
+        ]);
+
+        if (!doctorsRes.ok || !scheduleRes.ok) {
+            throw new Error("Không thể tải dữ liệu từ máy chủ");
+        }
+
+        doctorsList = await doctorsRes.json();
+        const scheduleJson = await scheduleRes.json();
+        scheduleData = scheduleJson.data || {};
+
+        renderScheduleThead();
+        renderScheduleTable();
+
+    } catch (error) {
+        console.error("Lỗi khởi tạo:", error);
+        alert("Có lỗi xảy ra khi tải dữ liệu lịch làm việc!");
+    }
+});
+
+async function changeWeek(action) {
+    if (action === 'next') {
+        thu2HienTai.setDate(thu2HienTai.getDate() + 7);
+    }
+    else if (action === 'prev') {
+        thu2HienTai.setDate(thu2HienTai.getDate() - 7);
+    }
+    else if (action === 'current') {
+        const today = new Date();
+        const day = today.getDay() || 7;
+
+        thu2HienTai = new Date(today);
+        thu2HienTai.setDate(today.getDate() - (day - 1));
+        thu2HienTai.setHours(0, 0, 0, 0);
+    }
+
+    const chuNhatHienTai = new Date(thu2HienTai);
+    chuNhatHienTai.setDate(thu2HienTai.getDate() + 6);
+
+    const formatDate = (d) => {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const ngayBatDau = formatDate(thu2HienTai);
+    const ngayKetThuc = formatDate(chuNhatHienTai);
+
+    const weekSpan = document.getElementById('weekSpan')
+    weekSpan.textContent = `Tuần: ${ngayBatDau} - ${ngayKetThuc}`;
+
+    try {
+        const response = await fetch(`/api/admin/lay-lich-tuan?ngayBatDau=${ngayBatDau}&ngayKetThuc=${ngayKetThuc}`);
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || "Không thể tải dữ liệu từ máy chủ");
+        }
+
+        const scheduleJson = await response.json();
+        scheduleData = scheduleJson.data || {};
+
+        renderScheduleThead();
+        renderScheduleTable();
+
+    } catch (error) {
+        console.error("Lỗi chuyển tuần:", error);
+        alert("Lỗi: " + error.message);
+    }
+}
+
+const dayLabels = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+function renderScheduleThead(){
+
+    const thead = document.getElementById('scheduleThead');
+    if (!thead) return;
+
+    thead.innerHTML = '';
+    let html = `<tr>
+        <th class="w-32 p-4 font-semibold text-center border-r border-gray-200 bg-white">
+            <span class="text-slate-500">Ca trực</span>
+        </th>`;
+
+    for (let i = 0; i < 7; i++) {
+        let currentDate = new Date(thu2HienTai)
+        currentDate.setDate(currentDate.getDate() + i);
+
+        let dateStr = `${String(currentDate.getDate()).padStart(2, '0')}/${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+
+        if (i === 6) {
+            html += `
+                <th class="p-4 font-semibold text-center w-[12.5%]">
+                    <div class="flex flex-col items-center gap-0.5">
+                        <span>${dayLabels[i]}</span>
+                        <span class="text-xs font-normal text-slate-500">${dateStr}</span>
+                    </div>
+                </th>
+            `;
+        }
+        else{
+            html += `
+                <th class="p-4 font-semibold text-center border-r border-gray-200 w-[12.5%]">
+                    <div class="flex flex-col items-center gap-0.5">
+                        <span>${dayLabels[i]}</span>
+                        <span class="text-xs font-normal text-slate-500">${dateStr}</span>
+                    </div>
+                </th>
+            `;
+        }
+    }
+    html += `</tr>`;
+    thead.innerHTML = html;
+}
+
+function renderScheduleTable() {
+    const tbody = document.getElementById('scheduleBody');
+    tbody.innerHTML = '';
+
+    dsCaLam.forEach(ca => {
+        let rowHtml = `<tr>`;
+
+        rowHtml += `
+            <td class="p-4 border-r border-gray-200 bg-slate-50/50 text-center align-middle">
+                <div class="flex flex-col items-center gap-1.5">
+                    <span class="font-semibold text-slate-700">${ca.tenCa}</span>
+                    <span class="text-[11px] text-slate-500 whitespace-nowrap">${ca.gioBatDau} - ${ca.gioKetThuc}</span>
+                </div>
+            </td>
+        `;
+
+        daysOfWeek.forEach(thu => {
+            const bacSiIds = (scheduleData[thu] && scheduleData[thu][ca.id]) ? scheduleData[thu][ca.id] : [];
+
+            if (bacSiIds.length === 0) {
+                rowHtml += `
+                    <td class="p-2 border-r border-gray-200 align-top h-[220px] bg-slate-50/30 schedule-cell group transition-all">
+                        <div class="flex flex-col items-center justify-center h-full gap-3 opacity-70 group-hover:opacity-100 transition-opacity">
+                            <span class="text-xs italic text-slate-400">Chưa có lịch</span>
+                            <button class="w-10/12 py-2 border border-dashed border-gray-300 rounded-lg text-xs font-medium text-slate-500 transition-all flex items-center justify-center gap-1.5 hover:bg-white hover:text-primary hover:border-primary/50 shadow-sm">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Thêm
+                            </button>
+                        </div>
+                    </td>
+                `;
             } else {
-                alert("Lỗi: " + data.msg);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Có lỗi kết nối máy chủ!");
-        });
-    }
+                let cellContent = `<div class="flex flex-col gap-2 h-full overflow-y-auto scrollbar-hide pr-1 pb-1">`;
 
-    function chonCa(ca) {
-        const checkboxes = document.querySelectorAll('.khung-gio-cb');
-        checkboxes.forEach(cb => {
-            const gio = parseInt(cb.value.split(':')[0]);
-            if (ca === 'sang') {
-                cb.checked = (gio >= 8 && gio < 12);
-            } else if (ca === 'chieu') {
-                cb.checked = (gio >= 13 && gio < 17);
-            } else if (ca === 'cangay') {
-                cb.checked = true;
-            } else if (ca === 'clear') {
-                cb.checked = false;
+                bacSiIds.forEach(bsId => {
+                    // Tìm object thông tin chi tiết của bác sĩ này
+                    const doctor = doctorsList.find(d => d.id === bsId);
+
+                    if (doctor) {
+                        const avatarUrl = doctor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(doctor.hoTen)}&background=dbeafe&color=1d4ed8`;
+                        const chuyenKhoa = doctor.chuyenKhoa || 'Đa khoa';
+
+                        cellContent += `
+                            <div class="group flex items-center gap-2.5 p-2 rounded-lg border border-gray-100 bg-white hover:bg-blue-50/50 hover:border-blue-200 transition-all cursor-pointer shadow-sm relative">
+                                <div class="relative shrink-0">
+                                    <img src="${avatarUrl}" class="w-8 h-8 rounded-full object-cover border border-gray-100" alt="avatar">
+                                    <span class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-xs font-semibold text-slate-700 truncate group-hover:text-primary">
+                                        BS. ${doctor.hoTen}
+                                    </p>
+                                    <p class="text-[10px] text-slate-500 truncate">${chuyenKhoa}</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                cellContent += `
+                    <button class="mt-auto w-full py-1.5 border border-dashed border-gray-200 rounded-lg text-[11px] font-medium text-slate-500 transition-colors flex items-center justify-center gap-1 hover:bg-slate-50 hover:text-primary">
+                        <i data-lucide="plus" class="w-3 h-3"></i>
+                    </button>
+                </div>`;
+
+                rowHtml += `<td class="p-2 border-r border-gray-200 align-top h-[220px] bg-white schedule-cell">${cellContent}</td>`;
             }
         });
-    }
+
+        rowHtml += `</tr>`;
+
+        tbody.insertAdjacentHTML('beforeend', rowHtml);
+    });
 
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
     }
-
- let currentLichData = {}; // Lưu thông tin để gửi API
-
-function openModal(lichId) {
-    document.getElementById('modalLich').classList.remove('hidden');
-
-    fetch(`/api/admin/chi-tiet-lich/${lichId}`)
-        .then(res => res.json())
-        .then(res => {
-            if(res.success) {
-                const d = res.data;
-                currentLichData = { bacsi_id: d.bacsi_id, ngay: d.raw_date };
-
-                document.getElementById('modalTitle').innerText = `BS. ${d.ten_bacsi}`;
-                document.getElementById('modalSubTitle').innerText = `Ngày làm việc: ${d.ngay_lam_viec}`;
-
-                // 1. Hiển thị các ca đã có
-                let htmlDaCo = "";
-                let gioDaTao = [];
-                d.ca_lam_viec.forEach(ca => {
-                    gioDaTao.push(ca.time);
-                    const colorClass = ca.is_booked ? "bg-red-100 text-red-700 border-red-200" : "bg-green-100 text-green-700 border-green-200";
-                    const icon = ca.is_booked ? "user-check" : "clock";
-                    htmlDaCo += `<span class="px-3 py-1 border rounded-lg text-xs font-bold flex items-center gap-1 ${colorClass}"><i data-lucide="${icon}" class="w-3 h-3"></i>${ca.time}</span>`;
-                });
-                document.getElementById('caDaCo').innerHTML = htmlDaCo;
-
-                // 2. Hiển thị các ca còn trống để thêm (Lọc bỏ giờ đã tạo)
-                const fullHours = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30'];
-                let htmlTrong = "";
-                fullHours.forEach(h => {
-                    if(!gioDaTao.includes(h)) {
-                        htmlTrong += `
-                        <label class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:border-primary has-[:checked]:bg-blue-50 transition-all">
-                            <input type="checkbox" value="${h}" class="add-more-cb w-4 h-4 accent-primary">
-                            <span class="text-xs font-bold">${h}</span>
-                        </label>`;
-                    }
-                });
-                document.getElementById('caConTrong').innerHTML = htmlTrong || '<p class="text-xs text-slate-400">Đã hết khung giờ trống.</p>';
-
-                if(typeof lucide !== 'undefined') lucide.createIcons();
-            }
-        });
-}
-
-function closeModal() {
-        document.getElementById('modalLich').classList.add('hidden');
-    }
-
-function saveMoreSchedule() {
-    const checked = document.querySelectorAll('.add-more-cb:checked');
-    const ds_gio = Array.from(checked).map(c => c.value);
-
-    if(ds_gio.length === 0) return alert("Vui lòng chọn ít nhất 1 ca mới!");
-
-    fetch('/api/admin/tao-lich', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            bacsi_id: currentLichData.bacsi_id,
-            ngay_lam_viec: currentLichData.ngay,
-            danh_sach_gio: ds_gio
-        })
-    }).then(res => res.json()).then(data => {
-        if(data.success) {
-            alert("Đã bổ sung ca khám thành công!");
-            location.reload();
-        } else {
-            alert("Lỗi: " + data.msg);
-        }
-    });
 }
