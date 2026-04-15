@@ -1,0 +1,148 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Đặt lịch khám - MediCare{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<style>
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .date-card.active {
+        background-color: #1d4ed8; border-color: #1d4ed8; color: white;
+        box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25); transform: translateY(-2px);
+    }
+    .date-card.active .date-day { color: #bfdbfe; }
+    .date-card.active .date-date { color: #ffffff; }
+
+    .time-slot.selected {
+        background-color: #eff6ff; color: #1d4ed8; border-color: #1d4ed8; font-weight: 700; box-shadow: 0 0 0 1px #1d4ed8;
+    }
+    .time-slot.booked {
+        background-color: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; cursor: not-allowed; text-decoration: line-through; opacity: 0.6;
+    }
+
+    .specialty-item.active {
+        background-color: #eff6ff; color: #1d4ed8; font-weight: 700; border-left: 4px solid #1d4ed8;
+    }
+</style>
+
+<div class="bg-slate-50 min-h-screen pt-24 pb-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+
+        <nav class="flex text-sm text-slate-500 font-medium mb-6 items-center sticky top-[80px] z-30 bg-slate-50 py-3">
+            <a href="/" class="hover:text-[#28539e] flex items-center gap-1 transition-colors">
+                <i data-lucide="home" class="w-4 h-4"></i> Trang chủ
+            </a>
+            <span class="mx-2 text-gray-300">/</span>
+
+            <a href="/dat-lich" id="bcDatLichText" class="text-[#28539e] font-semibold hover:text-[#28539e] transition-colors cursor-pointer">
+                Đặt lịch khám
+            </a>
+
+            <span id="bcSpecialtyDivider" class="mx-2 text-gray-300 hidden">/</span>
+            <span id="bcSpecialtyName" class="text-[#28539e] font-semibold hidden"></span>
+        </nav>
+
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="w-full md:w-1/4 shrink-0">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-[165px] z-20 h-fit">
+                    <div class="bg-[#28539e] text-white font-bold py-3.5 px-5 text-lg flex items-center gap-2">
+                        <i data-lucide="layers" class="w-5 h-5"></i> Chuyên khoa
+                    </div>
+                    <ul id="specialtyList" class="divide-y divide-gray-100 max-h-[calc(100vh-200px)] overflow-y-auto">
+                        <li class="p-4 text-center text-slate-500 text-sm"></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="w-full md:w-3/4">
+                <h2 id="currentSpecialtyTitle" class="text-2xl font-bold text-[#28539e] mb-6 border-b border-gray-200 pb-2">Tất cả bác sĩ</h2>
+                <div id="doctorList" class="flex flex-col gap-6">
+                    <div class="text-center py-10 text-slate-500"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="bookingModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col overflow-hidden h-[85vh] md:h-[650px] transform scale-95 transition-transform duration-300" id="modalContent">
+
+        <div class="bg-[#28539e] text-white px-6 py-4 flex justify-between items-center shrink-0">
+            <div>
+                <h3 class="font-bold text-lg">Đặt lịch khám</h3>
+                <p id="modalDoctorName" class="text-sm text-blue-100 font-medium"></p>
+            </div>
+            <button onclick="closeBookingModal()" class="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto flex-1 bg-slate-50">
+
+            <div class="mb-8">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-sm font-bold text-slate-700 uppercase tracking-wide bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                        <span id="currentMonthDisplay"></span>
+                    </span>
+                    <div class="flex gap-2">
+                        <button onclick="scrollDate('left')" class="p-1.5 rounded-lg border border-gray-300 bg-white hover:bg-slate-50 text-slate-600"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                        <button onclick="scrollDate('right')" class="p-1.5 rounded-lg border border-gray-300 bg-white hover:bg-slate-50 text-slate-600"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+                <div id="dateSlider" class="flex overflow-x-auto gap-3 pb-3 scrollbar-hide snap-x scroll-smooth"></div>
+            </div>
+
+            <div id="statusAlert" class="hidden mb-6 p-4 rounded-xl flex items-start gap-3">
+                <i id="statusIcon" data-lucide="info" class="w-5 h-5 mt-0.5"></i>
+                <p id="statusText" class="font-medium text-sm"></p>
+            </div>
+
+            <div id="timeSlotsArea" class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm min-h-[280px]">
+                <h4 class="font-bold text-slate-800 mb-4 flex items-center gap-2 border-b pb-2">
+                    <i data-lucide="clock" class="w-5 h-5 text-primary"></i> Khung giờ khám
+                </h4>
+
+                <div id="loadingSlots" class="text-center py-6 text-slate-500 hidden">
+                    <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
+                </div>
+
+                <div id="slotsContainer" class="space-y-6">
+                    <div id="caSangWrapper" class="hidden">
+                        <h5 class="text-sm font-semibold text-slate-600 mb-3 flex items-center gap-2"><i data-lucide="sun" class="w-4 h-4 text-orange-500"></i> Buổi Sáng</h5>
+                        <div id="caSangGrid" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5"></div>
+                    </div>
+                    <div id="caChieuWrapper" class="hidden">
+                        <h5 class="text-sm font-semibold text-slate-600 mb-3 flex items-center gap-2"><i data-lucide="sunset" class="w-4 h-4 text-blue-500"></i> Buổi Chiều</h5>
+                        <div id="caChieuGrid" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="bookingAction" class="hidden bg-white border-t border-gray-200 p-4 shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+                <p class="text-xs text-slate-500 mb-0.5">Đã chọn:</p>
+                <p id="selectedTimeText" class="font-bold text-primary text-base flex items-center gap-1.5">
+                    <i data-lucide="check-circle-2" class="w-5 h-5"></i> <span></span>
+                </p>
+            </div>
+            <div class="w-full sm:w-auto m-0">
+                <input type="hidden" id="inputBacSiId" value="">
+                <input type="hidden" id="inputDate">
+                <input type="hidden" id="inputTime">
+
+                <button id="btnSubmitBooking" type="button" class="w-full sm:w-auto bg-[#28539e] hover:bg-blue-800 text-white px-6 py-2.5 rounded-xl font-bold shadow-md transition-all flex items-center justify-center gap-2">
+                    Xác nhận đặt lịch <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="resultModalContainer"></div>
+
+<script src="{{ url_for('static', filename='js/dat_lich.js') }}"></script>
+
+{% endblock %}

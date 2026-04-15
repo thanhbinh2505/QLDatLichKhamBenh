@@ -1,9 +1,6 @@
 {%extends 'layout/base.html'%}
 
 {%block content%}
-<body>
-
-</body>
 <section class="relative pt-28 pb-16 lg:pt-36 lg:pb-24 overflow-hidden">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -18,7 +15,7 @@
                     Đội ngũ chuyên gia y tế hàng đầu cùng trang thiết bị hiện đại, mang đến dịch vụ chăm sóc tận tâm, an toàn và hiệu quả nhất cho mọi lứa tuổi.
                 </p>
                 <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                    <a href="#appointment" class="bg-primary hover:bg-primaryHover text-white px-8 py-3.5 rounded-full font-semibold text-lg transition-all shadow-lg shadow-primary/30 text-center">
+                    <a href="/dat-lich" class="bg-primary hover:bg-primaryHover text-white px-8 py-3.5 rounded-full font-semibold text-lg transition-all shadow-lg shadow-primary/30 text-center">
                         Đặt lịch ngay
                     </a>
                     <a href="#services" class="border-2 border-slate-200 hover:border-primary text-slate-700 hover:text-primary px-8 py-3.5 rounded-full font-semibold text-lg transition-all text-center">
@@ -137,17 +134,17 @@
                 <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Đội ngũ bác sĩ chuyên gia</h2>
                 <p class="text-slate-600 max-w-2xl">Những người tận tâm với nghề, giàu kinh nghiệm chuyên môn, sẵn sàng đồng hành cùng sức khỏe của bạn.</p>
             </div>
-            <div class="flex gap-2">
-                <button onclick="scrollDoctors('left')" class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-slate-600 hover:text-primary hover:border-primary transition-colors shadow-sm">
-                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+            <div class="flex gap-2 relative z-50 cursor-pointer">
+                <button onclick="scrollDoctors('left');" class="relative z-50 w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-slate-600 hover:text-[#28539e] hover:border-[#28539e] transition-colors shadow-sm cursor-pointer">
+                    <i data-lucide="chevron-left" class="w-5 h-5 pointer-events-none"></i>
                 </button>
-                <button onclick="scrollDoctors('right')" class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-slate-600 hover:text-primary hover:border-primary transition-colors shadow-sm">
-                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                <button onclick="scrollDoctors('right');" class="relative z-50 w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-slate-600 hover:text-[#28539e] hover:border-[#28539e] transition-colors shadow-sm cursor-pointer">
+                    <i data-lucide="chevron-right" class="w-5 h-5 pointer-events-none"></i>
                 </button>
             </div>
         </div>
 
-        <div id="doctor-container" class="flex overflow-x-hidden gap-6 scroll-smooth snap-x">
+        <div id="doctor-container" class="flex overflow-x-auto gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {% for d in doctors %}
             <div class="min-w-full sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow border border-gray-100 snap-start flex-shrink-0">
                 <img src="https://placehold.co/400x400/e2e8f0/475569?text=BS+{{ d.user.hoTen }}"
@@ -161,93 +158,6 @@
                 </div>
             </div>
             {% endfor %}
-        </div>
-    </div>
-</section>
-
-<!-- 6. Quick Appointment Form -->
-<section id="appointment" class="bg-darkBg relative py-20">
-    <!-- Background Pattern (Optional styling) -->
-    <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <!-- Text Content -->
-            <div class="text-white">
-                <h2 class="text-3xl md:text-4xl font-bold mb-6">Đặt lịch khám nhanh chóng</h2>
-                <p class="text-slate-300 text-lg mb-8">
-                    Tiết kiệm thời gian chờ đợi tại phòng khám bằng cách đặt lịch trước. Đội ngũ y tá sẽ gọi lại xác nhận trong vòng 15 phút sau khi bạn gửi thông tin.
-                </p>
-                <ul class="space-y-4 mb-8">
-                    <li class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                            <i data-lucide="check" class="w-5 h-5"></i>
-                        </div>
-                        <span>Không phải bốc số chờ đợi</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                            <i data-lucide="check" class="w-5 h-5"></i>
-                        </div>
-                        <span>Được chọn bác sĩ mong muốn</span>
-                    </li>
-                    <li class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                            <i data-lucide="check" class="w-5 h-5"></i>
-                        </div>
-                        <span>Nhắc nhở lịch khám tự động qua SMS</span>
-                    </li>
-                </ul>
-            </div>
-
-            <!-- Form Card -->
-            <div class="bg-white rounded-2xl p-8 shadow-2xl">
-                <h3 class="text-2xl font-bold text-slate-900 mb-6 text-center">Thông tin đặt lịch</h3>
-                <form action="#" method="POST" class="space-y-5">
-                    <!-- Họ tên -->
-                    <div>
-                        <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Họ và tên bệnh nhân <span class="text-red-500">*</span></label>
-                        <input type="text" id="name" name="name" placeholder="Ví dụ: Nguyễn Văn A" required
-                            class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
-                    </div>
-                    <!-- SĐT -->
-                    <div>
-                        <label for="phone" class="block text-sm font-medium text-slate-700 mb-1">Số điện thoại liên hệ <span class="text-red-500">*</span></label>
-                        <input type="tel" id="phone" name="phone" placeholder="09xx xxx xxx" required
-                            class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
-                    </div>
-                    <!-- Chuyên khoa -->
-                    <div>
-                        <label for="department" class="block text-sm font-medium text-slate-700 mb-1">Chọn chuyên khoa</label>
-                        <div class="relative">
-                            <select id="department" name="department"
-                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all appearance-none bg-white">
-                                <option value="" disabled selected>-- Chọn chuyên khoa --</option>
-                                <option value="nhi">Khám Nhi khoa</option>
-                                <option value="rang">Răng Hàm Mặt</option>
-                                <option value="tim">Tim mạch</option>
-                                <option value="dakhoa">Khám Tổng quát</option>
-                                <option value="khac">Khác</option>
-                            </select>
-                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
-                                <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Ngày giờ -->
-                    <div>
-                        <label for="date" class="block text-sm font-medium text-slate-700 mb-1">Ngày mong muốn khám</label>
-                        <input type="date" id="date" name="date"
-                            class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-slate-600">
-                    </div>
-                    <!-- Submit -->
-                    <div class="pt-2">
-                        <button type="submit" class="w-full bg-primary hover:bg-primaryHover text-white py-3.5 rounded-xl font-bold text-lg shadow-lg shadow-primary/30 transition-all">
-                            Xác nhận đặt lịch
-                        </button>
-                    </div>
-                </form>
-            </div>
         </div>
     </div>
 </section>
@@ -328,4 +238,5 @@
     </div>
 </section>
 
+<script src="{{ url_for('static', filename='js/base.js') }}"></script>
 {%endblock%}

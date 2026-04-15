@@ -3,7 +3,9 @@ from datetime import datetime, time, date, timedelta
 from sqlalchemy import func, and_, or_
 
 from app import app, db
-from app.models import User, BenhNhan, BacSi, PhieuDatLich, LichLamViec, TrangThaiLichHen, UserRole, CaLam, NgayLamViec, PhanCa
+from app.models import (User, BenhNhan, BacSi, PhieuDatLich,
+                        LichLamViec, TrangThaiLichHen, UserRole, CaLam,
+                        NgayLamViec, PhanCa, KhungGio, TrangThaiBacSi)
 
 import re
 import json
@@ -80,6 +82,120 @@ def get_list_shift():
 
     ds_calam = CaLam.query.all()
     return [ca.to_dict() for ca in ds_calam]
+
+KHUNG_GIO_SANG = [
+    "08:00 - 08:30", "08:30 - 09:00", "09:00 - 09:30", "09:30 - 10:00",
+    "10:00 - 10:30", "10:30 - 11:00", "11:00 - 11:30", "11:30 - 12:00"
+]
+
+KHUNG_GIO_CHIEU = [
+    "13:00 - 13:30", "13:30 - 14:00", "14:00 - 14:30", "14:30 - 15:00",
+    "15:00 - 15:30", "15:30 - 16:00", "16:00 - 16:30", "16:30 - 17:00"
+]
+
+def get_khung_gio_bac_si(bac_si_id, ngay_kham_str):
+
+    ngay_kham = datetime.strptime(ngay_kham_str, '%Y-%m-%d').date()
+    lich_truc = PhanCa.query.filter_by(id_BacSi=bac_si_id, thuocNgay=ngay_kham).all()
+
+    if not lich_truc:
+        return {"status": "nghi_phep", "message": "Bác sĩ không có lịch trực trong ngày này."}
+
+    if any(ca.trangThai == TrangThaiBacSi.NghiPhep for ca in lich_truc):
+        return {"status": "nghi_phep", "message": "Bác sĩ đang nghỉ phép, vui lòng chọn ngày khác."}
+
+    ca_lam_ids = [ca.id_CaLam for ca in lich_truc]
+    danh_sach_ca_lam = CaLam.query.filter(CaLam.id.in_(ca_lam_ids)).all()
+
+    danh_sach_slot = []
+    for ca in danh_sach_ca_lam:
+        if "Ca Sáng" in ca.tenCa:
+            danh_sach_slot.extend([{"gio": gio, "buoi": "sang"} for gio in KHUNG_GIO_SANG])
+        elif "Ca Chiều" in ca.tenCa:
+            danh_sach_slot.extend([{"gio": gio, "buoi": "chieu"} for gio in KHUNG_GIO_CHIEU])
+
+    phieu_da_dat = PhieuDatLich.query.filter_by(
+        bacsi_id=bac_si_id,
+        ngayKham=ngay_kham,
+        status=TrangThaiLichHen.Scheduled
+    ).all()
+
+    cac_gio_da_dat = {
+        f"{phieu.khung_gio.startTime.strftime('%H:%M')} - {phieu.khung_gio.endTime.strftime('%H:%M')}"
+        for phieu in phieu_da_dat
+    }
+    for slot in danh_sach_slot:
+        slot["trang_thai"] = "da_dat" if slot["gio"] in cac_gio_da_dat else "con_trong"
+    return {
+        "status": "hoat_dong",
+        "slots": danh_sach_slot
+    }
+def luu_phieu_dat_lich(bacsi_id, ngay_kham_str, gio_kham_str, current_user_id):
+    try:
+        try:
+            ngay_kham = datetime.strptime(ngay_kham_str, '%Y-%m-%d').date()
+            gio_bat_dau_str, gio_ket_thuc_str = gio_kham_str.split(" - ")
+            start_time = datetime.strptime(gio_bat_dau_str, '%H:%M').time()
+            end_time = datetime.strptime(gio_ket_thuc_str, '%H:%M').time()
+        except ValueError:
+            return False, "Định dạng ngày/giờ không hợp lệ.", None
+
+
+        benhnhan = BenhNhan.query.filter_by(user_id=current_user_id).first()
+        if not benhnhan:
+            return False, "Không tìm thấy hồ sơ bệnh nhân.", None
+
+        ngay_hien_tai = date.today()
+        if ngay_kham > ngay_hien_tai + timedelta(days=30):
+            return False, "Bạn chỉ có thể đặt lịch trước tối đa 30 ngày.", None
+        if ngay_kham < ngay_hien_tai:
+            return False, "Không thể đặt lịch cho ngày trong quá khứ.", None
+        so_ca_da_dat = PhieuDatLich.query.filter(
+            PhieuDatLich.benhnhan_id == benhnhan.id,
+            PhieuDatLich.ngayKham == ngay_kham,
+            PhieuDatLich.status != TrangThaiLichHen.Cancelled
+        ).count()
+
+        if so_ca_da_dat >= 2:
+            return False, f"Chỉ đặt tối đa 2ca/ngày.Bạn đã đạt giới hạn: {ngay_kham.strftime('%d/%m/%Y')}.", None
+
+        khung_gio = KhungGio.query.filter_by(startTime=start_time, endTime=end_time).first()
+        if not khung_gio:
+            khung_gio = KhungGio(startTime=start_time, endTime=end_time)
+            db.session.add(khung_gio)
+            db.session.flush()
+        khung_gio_da_dat = PhieuDatLich.query.filter(
+            PhieuDatLich.benhnhan_id==benhnhan.id,
+            PhieuDatLich.khunggio_id == khung_gio.id,
+            PhieuDatLich.ngayKham == ngay_kham,
+            PhieuDatLich.status != TrangThaiLichHen.Cancelled
+        ).first()
+        if khung_gio_da_dat:
+            return False, f"Bạn đã có lịch khám khung giờ {gio_kham_str} ngay {ngay_kham.strftime('%d/%m/%Y')}.Vui lòng chọn khung giờ khác!", None
+        phieu_moi = PhieuDatLich(
+            benhnhan_id=benhnhan.id,
+            khunggio_id=khung_gio.id,
+            bacsi_id=bacsi_id,
+            ngayKham=ngay_kham,
+            status=TrangThaiLichHen.Scheduled
+        )
+        db.session.add(phieu_moi)
+        commit()
+
+        bacsi = BacSi.query.get(bacsi_id)
+        ten_bs = bacsi.user.hoTen if (bacsi and bacsi.user) else "Bác sĩ"
+
+        thong_tin_dat_lich = {
+            "doctor_name": f"BS. {ten_bs}",
+            "date": ngay_kham.strftime('%d/%m/%Y'),
+            "time": gio_kham_str
+        }
+
+        return True, "Bạn đã đặt lịch khám thành công.", thong_tin_dat_lich
+
+    except Exception as e:
+        db.session.rollback()
+        return False, "Hệ thống đang gặp sự cố khi lưu lịch hẹn. Vui lòng thử lại!", None
 
 def get_ngay_chua_sap_lich_gan_nhat():
     """
