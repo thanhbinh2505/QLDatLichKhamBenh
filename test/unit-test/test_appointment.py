@@ -1,7 +1,3 @@
-from typing import assert_type
-
-from pyexpat.errors import messages
-from sqlalchemy.ext.asyncio import async_scoped_session
 
 from app import dao
 from test_base import test_session, test_app, test_client
