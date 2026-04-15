@@ -1,19 +1,19 @@
-import flask
+
 import pytest
 from flask import Flask
-from app import app as flask_app, db
+from app import db
 from app.models import User
-
+from app.index import register_routes
 import app.index
 
 def create_app():
-    app = flask_app
+    app = Flask(__name__)
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     app.config["TESTING"] = True
+    db.init_app(app)
     app.secret_key = 'difhhfoiwufowirgoi'
 
-    # db.init_app(app)
-    # register_routes(app=app)
+    register_routes(app=app)
     return app
 
 
