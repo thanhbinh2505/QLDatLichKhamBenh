@@ -1,9 +1,6 @@
 {%extends 'layout/base.html'%}
 
 {%block content%}
-<body>
-
-</body>
 <section class="relative pt-28 pb-16 lg:pt-36 lg:pb-24 overflow-hidden">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -137,17 +134,17 @@
                 <h2 class="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Đội ngũ bác sĩ chuyên gia</h2>
                 <p class="text-slate-600 max-w-2xl">Những người tận tâm với nghề, giàu kinh nghiệm chuyên môn, sẵn sàng đồng hành cùng sức khỏe của bạn.</p>
             </div>
-            <div class="flex gap-2">
-                <button onclick="scrollDoctors('left')" class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-slate-600 hover:text-primary hover:border-primary transition-colors shadow-sm">
-                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+            <div class="flex gap-2 relative z-50 cursor-pointer">
+                <button onclick="scrollDoctors('left');" class="relative z-50 w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-slate-600 hover:text-[#28539e] hover:border-[#28539e] transition-colors shadow-sm cursor-pointer">
+                    <i data-lucide="chevron-left" class="w-5 h-5 pointer-events-none"></i>
                 </button>
-                <button onclick="scrollDoctors('right')" class="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-slate-600 hover:text-primary hover:border-primary transition-colors shadow-sm">
-                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                <button onclick="scrollDoctors('right');" class="relative z-50 w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-slate-600 hover:text-[#28539e] hover:border-[#28539e] transition-colors shadow-sm cursor-pointer">
+                    <i data-lucide="chevron-right" class="w-5 h-5 pointer-events-none"></i>
                 </button>
             </div>
         </div>
 
-        <div id="doctor-container" class="flex overflow-x-hidden gap-6 scroll-smooth snap-x">
+        <div id="doctor-container" class="flex overflow-x-auto gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {% for d in doctors %}
             <div class="min-w-full sm:min-w-[calc(50%-12px)] lg:min-w-[calc(33.333%-16px)] bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow border border-gray-100 snap-start flex-shrink-0">
                 <img src="https://placehold.co/400x400/e2e8f0/475569?text=BS+{{ d.user.hoTen }}"
@@ -241,4 +238,5 @@
     </div>
 </section>
 
+<script src="{{ url_for('static', filename='js/base.js') }}"></script>
 {%endblock%}

@@ -4,12 +4,149 @@ from werkzeug.utils import redirect
 from datetime import datetime, timedelta, date
 from flask_login import login_user, logout_user, login_required, current_user
 from app import app, dao, login
-from app.models import UserRole, CaLam, LichLamViec, NgayLamViec, PhanCa
+from app.models import UserRole, CaLam, LichLamViec, NgayLamViec, PhanCa, TrangThaiBacSi
 
 @app.route('/')
 def index():
     doctors = dao.get_list_doctor()
     return render_template('index.html', doctors=doctors)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login_process():
+    error_msg = ""
+    username_val = ""
+
+    if request.method == ('POST'):
+        username_or_email = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+
+        user = dao.get_user_by_email_username(username_or_email)
+        if not user:
+            error_msg = "Username hoặc email không tồn tại!"
+            username_val = ""
+        elif not user.check_password(password):
+            error_msg = "Mật khẩu không chính xác!"
+            username_val = username_or_email
+        else:
+            login_user(user = user)
+            if user.role == UserRole.ADMIN:
+                return redirect('/admin')
+            elif user.role == UserRole.BACSI:
+                return redirect('/bacsi')
+            elif user.role == UserRole.BENHNHAN:
+                return redirect('/')
+
+    return render_template('login.html', error=error_msg, username_val=username_val)
+
+@app.route('/logout', methods=['GET', 'POST'])
+def logout_process():
+    logout_user()
+    return redirect('/')
+
+@app.route('/register', methods=["get", "post"])
+def register():
+    err_msg = ""
+    if request.method == 'POST':
+        username = request.form.get("username")
+        password = request.form.get("password")
+        hoten = request.form.get("hoten")
+        gioitinh_form = request.form.get("gioitinh")
+
+        if gioitinh_form not in ['male', 'female']:
+            err_msg = "Vui lòng chọn giới tính!"
+            return render_template('register.html', err_msg=err_msg)
+
+        gioitinh = True if gioitinh_form == 'male' else False
+
+        email = request.form.get("email")
+
+        ngaysinh_form = request.form.get("ngaysinh")
+        ngaysinh = None
+        if ngaysinh_form:
+            try:
+                ngaysinh = datetime.strptime(ngaysinh_form, "%Y-%m-%d").date()
+                print(ngaysinh)
+            except ValueError:
+                err_msg = "Định dạng ngày sinh không hợp lệ!"
+                return render_template('register.html', err_msg=err_msg)
+
+        diachi = request.form.get("diachi")
+
+        try:
+
+            if dao.them_benhnhan(username, hoten, email, gioitinh, password,
+                                    ngaysinh=ngaysinh, diachi=diachi):
+                return redirect(url_for('login_process'))
+        except ValueError as e:
+            err_msg = str(e)
+        except Exception as e:
+            err_msg = "Có lỗi xảy ra. Vui lòng thử lại sau!"
+    return render_template('register.html', err_msg=err_msg)
+
+@app.route('/api/doctors')
+def api_get_doctors():
+    ds_bacsi_objects = dao.get_list_doctor()
+
+    return jsonify([bs.to_dict() for bs in ds_bacsi_objects])
+
+@app.route('/dat-lich', methods=['GET'])
+def dat_lich():
+    return render_template('dat_lich.html')
+@app.route('/api/gio-kham-bac-si', methods=['GET'])
+def api_gio_kham_bac_si():
+    bacsi_id = request.args.get('bacsi_id')
+    ngay_str = request.args.get('ngay')
+
+    if not bacsi_id or not ngay_str:
+        return jsonify({"error": "Thiếu tham số"}), 400
+
+    ket_qua = dao.get_khung_gio_bac_si(bacsi_id, ngay_str)
+
+    if ket_qua.get("status") == "error":
+        return jsonify(ket_qua), 400
+
+    return jsonify(ket_qua)
+
+@app.route('/api/dat-lich', methods=['POST'])
+def api_dat_lich():
+    try:
+        if not current_user.is_authenticated or current_user.role != UserRole.BENHNHAN:
+            return jsonify({
+                "success": False,
+                "loai_thong_bao": "auth_required",
+                "message": "Vui lòng đăng nhập để đặt lịch khám!"
+            }), 401
+        data = request.json
+        bacsi_id = data.get('bacsi_id')
+        ngay_kham = data.get('ngay_kham')
+        gio_kham = data.get('gio_kham')
+
+        if not bacsi_id or not ngay_kham or not gio_kham:
+             return jsonify({
+                "success": False,
+                "loai_thong_bao": "error",
+                "message": "Thiếu thông tin đặt lịch!"
+            }), 400
+
+        thanh_cong, thong_diep, info = dao.luu_phieu_dat_lich(
+            bacsi_id=bacsi_id,
+            ngay_kham_str=ngay_kham,
+            gio_kham_str=gio_kham,
+            current_user_id=current_user.id
+        )
+        return jsonify({
+            "success": thanh_cong,
+            "loai_thong_bao": 'success' if thanh_cong else 'error',
+            "message": thong_diep,
+            "booking_info": info
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "loai_thong_bao": "error",
+            "message": f"Hệ thống bận hoặc có lỗi: {str(e)}"
+        }), 500
 
 @app.route('/admin')
 @login_required
@@ -28,9 +165,6 @@ def admin():
                            thu_2=thu_2_cua_tuan_hien_tai.strftime('%Y-%m-%d'),
                            chu_nhat=cn_cua_tuan_hien_tai.strftime('%Y-%m-%d'),
                            )
-@app.route('/dat-lich')
-def dat_lich():
-    return render_template('dat_lich.html')
   
 @app.route('/api/admin/lay-lich-tuan', methods=['GET'])
 def api_lay_lich_tuan():
@@ -156,83 +290,9 @@ def api_tao_lich_moi():
         print("Lỗi server:", e)
         return jsonify({"message": "Đã xảy ra lỗi. Thử lại sau!."}), 500
 
-@app.route('/login', methods=['GET', 'POST'])
-def login_process():
-    error_msg = ""
-    if request.method == ('POST'):
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        user = dao.auth_user(username=username, password=password)
-        if user:
-            login_user(user=user)
-            if user.role == UserRole.ADMIN:
-                return redirect('/admin')
-            elif user.role == UserRole.BACSI:
-                return redirect('/bacsi')
-            elif user.role == UserRole.BENHNHAN:
-                return redirect('/')
-        else:
-            error_msg = "Tài khoản hoặc mật khẩu không chính xác!"
-
-    return render_template('login.html', error=error_msg)
-
-@app.route('/logout', methods=['GET', 'POST'])
-def logout_process():
-    logout_user()
-    return redirect('/')
-
-@app.route('/register', methods=["get", "post"])
-def register():
-    err_msg = ""
-    if request.method == 'POST':
-        username = request.form.get("username")
-        password = request.form.get("password")
-        hoten = request.form.get("hoten")
-        gioitinh_form = request.form.get("gioitinh")
-
-        if gioitinh_form not in ['male', 'female']:
-            err_msg = "Vui lòng chọn giới tính!"
-            return render_template('register.html', err_msg=err_msg)
-
-        gioitinh = True if gioitinh_form == 'male' else False
-
-        email = request.form.get("email")
-
-        ngaysinh_form = request.form.get("ngaysinh")
-        ngaysinh = None
-        if ngaysinh_form:
-            try:
-                ngaysinh = datetime.strptime(ngaysinh_form, "%Y-%m-%d").date()
-                print(ngaysinh)
-            except ValueError:
-                err_msg = "Định dạng ngày sinh không hợp lệ!"
-                return render_template('register.html', err_msg=err_msg)
-
-        diachi = request.form.get("diachi")
-
-        try:
-
-            if dao.them_benhnhan(username, hoten, email, gioitinh, password,
-                                    ngaysinh=ngaysinh, diachi=diachi):
-                return redirect(url_for('login_process'))
-        except ValueError as e:
-            err_msg = str(e)
-        except Exception as e:
-            err_msg = "Có lỗi xảy ra. Vui lòng thử lại sau!"
-    return render_template('register.html', err_msg=err_msg)
-
 @login.user_loader
 def load_user(id):
     return dao.get_user_by_id(id)
-
-
-@app.route('/api/doctors')
-def api_get_doctors():
-    ds_bacsi_objects = dao.get_list_doctor()
-
-    return jsonify([bs.to_dict() for bs in ds_bacsi_objects])
-
 
 if __name__ == '__main__':
     with app.app_context():

@@ -121,7 +121,6 @@ class NgayLamViec(db.Model):
 
     danh_sach_phan_ca = relationship('PhanCa', lazy=True)
 
-
 class PhanCa(db.Model):
     __tablename__ = 'phan_ca'
 
@@ -132,17 +131,18 @@ class PhanCa(db.Model):
     trangThai = Column(Enum(TrangThaiBacSi), default=TrangThaiBacSi.HoatDong)
 
     bac_si = relationship('BacSi')
-    # ca_lam = relationship('CaLam')
 
 class PhieuDatLich(BaseModel):
     __tablename__ = 'phieudatlich'
 
     benhnhan_id = Column(Integer, ForeignKey('benhnhan.id'), nullable=False)
-    khunggio_id = Column(db.Integer, db.ForeignKey('khunggio.id'),unique=True, nullable=False)
+    khunggio_id = Column(Integer, ForeignKey('khunggio.id'), nullable=False)
+    bacsi_id = Column(Integer, ForeignKey('bacsi.id'), nullable=False)
 
     ngayTaoPhieu = Column(DateTime,default=datetime.now, nullable=False)
     status = Column(Enum(TrangThaiLichHen), default=TrangThaiLichHen.Scheduled, nullable=False)
     cancelTime = Column(DateTime)
+    ngayKham = Column(Date, nullable=False)
 
     user_huy_id = Column(Integer, ForeignKey('user.id'), nullable=True)
 
@@ -154,6 +154,17 @@ class KhungGio(BaseModel):
 
     startTime = Column(Time, nullable=False)
     endTime = Column(Time, nullable=False)
+
+    def __str__(self):
+        return f"{self.startTime.strftime('%H:%M')} - {self.endTime.strftime('%H:%M')}"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "startTime": self.startTime.strftime('%H:%M'),
+            "endTime": self.endTime.strftime('%H:%M'),
+            "label": f"{self.startTime.strftime('%H:%M')} - {self.endTime.strftime('%H:%M')}"
+        }
 
 if __name__ == '__main__':
     with app.app_context():
@@ -174,6 +185,21 @@ if __name__ == '__main__':
 
             # Mật khẩu chung cho tất cả các user là '123456'
             default_password = '123456'
+
+            danh_sach_gio = [
+                ("08:00", "08:30"), ("08:30", "09:00"), ("09:00", "09:30"), ("09:30", "10:00"),
+                ("10:00", "10:30"), ("10:30", "11:00"), ("11:00", "11:30"), ("11:30", "12:00"),
+                ("13:00", "13:30"), ("13:30", "14:00"), ("14:00", "14:30"), ("14:30", "15:00"),
+                ("15:00", "15:30"), ("15:30", "16:00"), ("16:00", "16:30"), ("16:30", "17:00")
+            ]
+
+            for start_str, end_str in danh_sach_gio:
+                start_t = datetime.strptime(start_str, "%H:%M").time()
+                end_t = datetime.strptime(end_str, "%H:%M").time()
+                kg = KhungGio(startTime=start_t, endTime=end_t)
+                db.session.add(kg)
+
+            db.session.flush()
 
             # 1. TẠO 2 ADMIN
             print("Đang tạo Admin...")
@@ -198,7 +224,7 @@ if __name__ == '__main__':
             for i in range(1, 11):
                 user = User(
                     username=f'benhnhan_{i}',
-                    hoTen=f'Nguyễn Văn Bệnh Nhân {i}',
+                    hoTen=f' Bệnh Nhân {i}',
                     email=f'benhnhan{i}@gmail.com',
                     gioiTinh=random.choice([True, False]),
                     role=UserRole.BENHNHAN
@@ -217,13 +243,13 @@ if __name__ == '__main__':
 
             # 3. TẠO 10 BÁC SĨ
             print("Đang tạo Bác sĩ...")
-            chuyen_khoa_list = ['Nội khoa', 'Ngoại khoa', 'Nhi khoa', 'Da liễu', 'Răng Hàm Mặt', 'Mắt', 'Tai Mũi Họng']
+            chuyen_khoa_list = ['Nhi khoa', 'Tim mạch', 'Răng Hàm Mặt', 'Thần Kinh', 'Nhãn khoa', 'Đa khoa tổng quát']
             danh_sach_bac_si = []
 
             for i in range(1, 11):
                 user = User(
                     username=f'bacsi_{i}',
-                    hoTen=f'Trần Thị Bác Sĩ {i}',
+                    hoTen=f'Bác Sĩ {i}',
                     email=f'bacsi{i}@hospital.com',
                     gioiTinh=random.choice([True, False]),
                     role=UserRole.BACSI
@@ -257,7 +283,7 @@ if __name__ == '__main__':
             db.session.flush()
 
             # Tạo các ngày làm việc và phân ca cho từng ngày
-            for i in range(31):  # 0 đến 30 ngày
+            for i in range(40):  # 0 đến 30 ngày
                 current_date = today + timedelta(days=i)
 
                 # Tạo bản ghi Ngày Làm Việc
