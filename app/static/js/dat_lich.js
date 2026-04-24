@@ -354,7 +354,7 @@ document.addEventListener("DOMContentLoaded", function() {
     function showResultModal(data) {
         const container = document.getElementById('resultModalContainer');
         const oldModal = document.getElementById('resultModal');
-        if (oldModal) oldModal.remove(); // Xóa modal cũ nếu có
+        if (oldModal) oldModal.remove();
 
         let modalContent = '';
 
@@ -368,7 +368,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     <p class="text-slate-600 mb-8 leading-relaxed">${data.message}</p>
                     <div class="flex flex-col sm:flex-row gap-3 justify-center">
                         <button onclick="document.getElementById('resultModal').remove()" class="w-full sm:w-auto px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">Để sau</button>
-                        <a href="/login" class="w-full sm:w-auto px-6 py-3 bg-[#28539e] hover:bg-blue-800 text-white font-bold rounded-xl shadow-md transition-colors">Đăng nhập ngay</a>
+                        <a href="/login?next=/dat-lich" class="w-full sm:w-auto px-6 py-3 bg-[#28539e] hover:bg-blue-800 text-white font-bold rounded-xl shadow-md transition-colors">Đăng nhập ngay</a>
                     </div>
                 </div>`;
         } else if (data.loai_thong_bao === 'success') {

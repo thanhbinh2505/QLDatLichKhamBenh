@@ -1,7 +1,7 @@
 
 from app import dao
 from test_base import test_session, test_app, test_client
-from datetime import time, date
+from datetime import time, date, datetime, timedelta
 from app.models import User, UserRole, BenhNhan, BacSi, NgayLamViec, CaLam, PhanCa, LichLamViec, TrangThaiBacSi, PhieuDatLich, TrangThaiLichHen
 from app.dao import get_khung_gio_bac_si, luu_phieu_dat_lich
 import pytest
@@ -19,12 +19,12 @@ def test_dat_lich_thanh_cong(test_client, mocker):
         True,
         "Bạn đã đặt lịch khám thành công.",
         {"doctor_name": "BS. Nguyễn Thanh Bình",
-         "date": "15/04/2026",
+         "date": "19/04/2026",
          "time": "08:00 - 08:30"}
     ))
     payload = {
         "bacsi_id": 2,
-        "ngay_kham": "2026-04-15",
+        "ngay_kham": "2026-04-19",
         "gio_kham": "08:00 - 08:30"
     }
     res = test_client.post('/api/dat-lich', json=payload)
@@ -37,7 +37,7 @@ def test_dat_lich_thanh_cong(test_client, mocker):
 
     mock_luu_phieu.assert_called_once_with(
         bacsi_id=2,
-        ngay_kham_str="2026-04-15",
+        ngay_kham_str="2026-04-19",
         gio_kham_str="08:00 - 08:30",
         current_user_id=1
     )
@@ -118,8 +118,7 @@ def setup_db_for_booking(test_session):
     ca = CaLam(tenCa='Ca Sáng', gioBatDau=time(8,0), gioKetThuc=time(12,0))
     test_session.add(ca)
 
-    # 4. Tạo Lịch trực cho ngày 15-04-2026
-    ngay_truc = date(2026, 4, 16)
+    ngay_truc = date(2026, 5, 15)
     lich = LichLamViec(ngayBatDau=ngay_truc, ngayKetThuc=ngay_truc)
     test_session.add(lich)
     test_session.flush()
@@ -135,8 +134,23 @@ def setup_db_for_booking(test_session):
     return {
         'patient_id': u_patient.id,
         'doctor_id': doctor.id,
-        'ngay_kham': '2026-04-16'
+        'ngay_kham': '2026-05-15'
     }
+
+def test_sai_dinh_dang_ngay_gio(test_session, setup_db_for_booking):
+    doctor_id = setup_db_for_booking['doctor_id']
+    patient_id = setup_db_for_booking['patient_id']
+
+    success, msg, info = dao.luu_phieu_dat_lich(
+        bacsi_id=doctor_id,
+        ngay_kham_str='2026-04-16',
+        gio_kham_str='08AM - 09AM',
+        current_user_id=patient_id,
+    )
+
+    assert success is False
+    assert "Định dạng ngày/giờ không hợp lệ" in msg
+    assert info is None
 
 def test_luu_phieu_dat_lich_thanh_cong(test_session, setup_db_for_booking):
     success, msg, info = dao.luu_phieu_dat_lich(
@@ -220,6 +234,58 @@ def test_khong_dat_lich_qua_khu(test_session, setup_db_for_booking):
     assert msg == "Không thể đặt lịch cho ngày trong quá khứ."
     assert info is None
 
+def test_bi_khoa_dat_lich_24h(test_session, setup_db_for_booking):
+    doctor_id = setup_db_for_booking['doctor_id']
+    patient_id = setup_db_for_booking['patient_id']
+    ngay_kham_str = setup_db_for_booking['ngay_kham']
+
+    benh_nhan = BenhNhan.query.filter_by(user_id= patient_id).first()
+    thoi_gian_mo_khoa = datetime.now() + timedelta(hours=15)
+    benh_nhan.thoiGianMoKhoa = thoi_gian_mo_khoa
+    test_session.commit()
+
+    success, msg, info = dao.luu_phieu_dat_lich(
+        bacsi_id=doctor_id,
+        ngay_kham_str=ngay_kham_str,
+        gio_kham_str='08:00 - 08:30',
+        current_user_id=patient_id,
+    )
+    assert success is False
+    assert "Tài khoản đang bị hạn chế đặt lịch" in msg
+    assert info is None
+
+def test_khung_gio_da_qua_trong_ngay(test_session, setup_db_for_booking):
+    doctor_id = setup_db_for_booking['doctor_id']
+    patient_id = setup_db_for_booking['patient_id']
+
+    success, msg, info = dao.luu_phieu_dat_lich(
+        bacsi_id=doctor_id,
+        ngay_kham_str='2026-4-18',
+        gio_kham_str='08:00 - 08:30',
+        current_user_id=patient_id,
+    )
+
+    assert success is False
+    assert "Khung giờ đã qua" in msg
+
+def test_khong_tim_thay_ho_so_benh_nhan(test_session, setup_db_for_booking):
+    doctor_id = setup_db_for_booking['doctor_id']
+    ngay_kham_str = setup_db_for_booking['ngay_kham']
+
+    # Dùng một ID giả mạo (không tồn tại trong Database)
+    user_id = 999
+
+    success, msg, info = dao.luu_phieu_dat_lich(
+        bacsi_id=doctor_id,
+        ngay_kham_str=ngay_kham_str,
+        gio_kham_str='08:00 - 08:30',
+        current_user_id=user_id,
+    )
+
+    assert success is False
+    assert "Không tìm thấy hồ sơ bệnh nhân" in msg
+    assert info is None
+
 def test_get_khung_gio(test_session, setup_db_for_booking):
     doctor_id = setup_db_for_booking['doctor_id']
     ngay_kham_str = setup_db_for_booking['ngay_kham']
@@ -257,7 +323,6 @@ def test_get_khung_gio_bac_si_nghi_phep(test_session, setup_db_for_booking):
     assert res is not None
     assert res['status'] == 'nghi_phep'
     assert "đang nghỉ phép" in res['message']
-
 
 def test_get_khung_gio__con_trong_full(test_session, setup_db_for_booking):
     doctor_id = setup_db_for_booking['doctor_id']
