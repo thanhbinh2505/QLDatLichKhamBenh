@@ -242,7 +242,6 @@ def huy_lich_kham(phieu_id, current_user):
         phieu.user_huy_id = current_user.id
         phieu.cancelTime = datetime.now()
         so_lan_huy = count_huy_lich(phieu.benhnhan_id)
-        print(so_lan_huy)
         msg = "Hủy lịch khám thành công."
         if so_lan_huy > 3:
             phieu.benh_nhan.thoiGianMoKhoa = datetime.now() + timedelta(hours=24)
@@ -253,7 +252,6 @@ def huy_lich_kham(phieu_id, current_user):
     except Exception:
         rollback()
         import traceback
-        print("=== LỖI HỦY LỊCH ===")
         traceback.print_exc()
         return False, "Có lỗi hệ thống xảy ra trong quá trình hủy lịch."
 
@@ -261,36 +259,50 @@ def get_lich_da_dat(user_id):
     benh_nhan = BenhNhan.query.filter_by(user_id=user_id).first()
     if not benh_nhan:
         return []
-    ds_phieu = PhieuDatLich.query.filter_by(benhnhan_id=benh_nhan.id)\
-                                            .order_by(PhieuDatLich.ngayKham.asc()).all()
+    ds_phieu = db.session.query(PhieuDatLich, BacSi, User, KhungGio) \
+        .join(BacSi, PhieuDatLich.bacsi_id == BacSi.id) \
+        .join(User, BacSi.user_id == User.id) \
+        .join(KhungGio, PhieuDatLich.khunggio_id == KhungGio.id) \
+        .filter(PhieuDatLich.benhnhan_id == benh_nhan.id) \
+        .order_by(PhieuDatLich.ngayKham.asc()) \
+        .all()
+
     results = []
-    flag = False
-    for phieu in ds_phieu:
-        phieu_bacsi = BacSi.query.get(phieu.bacsi_id)
-        ten_BS = phieu_bacsi.user.hoTen if phieu_bacsi and phieu_bacsi.user else None
-        gio_bat_dau = phieu.khung_gio.startTime.strftime('%H:%M')
-        gio_ket_thuc = phieu.khung_gio.endTime.strftime('%H:%M')
+    for phieu, bacsi, user_bs, khung_gio in ds_phieu:
         ngay_kham = phieu.ngayKham
         if isinstance(ngay_kham, str):
             ngay_kham = datetime.strptime(ngay_kham, '%Y-%m-%d').date()
-        if phieu.status == TrangThaiLichHen.Scheduled:
-            thoi_gian_ket_thuc = datetime.combine(ngay_kham, phieu.khung_gio.endTime)
-            if datetime.now() > thoi_gian_ket_thuc:
-                phieu.status = TrangThaiLichHen.Completed
-                flag = True
 
-        ngay_gio = datetime.combine(phieu.ngayKham,phieu.khung_gio.startTime).isoformat()
+        ngay_gio = datetime.combine(ngay_kham, khung_gio.startTime).isoformat()
+
         results.append({
             "id": phieu.id,
-            "ten_BS": ten_BS,
-            "ngay_kham_str": phieu.ngayKham.strftime('%d/%m/%Y'),
-            "gio_kham_str":  f"{gio_bat_dau} - {gio_ket_thuc}",
+            "ten_BS": user_bs.hoTen,
+            "ngay_kham_str": ngay_kham.strftime('%d/%m/%Y'),
+            "gio_kham_str": f"{khung_gio.startTime.strftime('%H:%M')} - {khung_gio.endTime.strftime('%H:%M')}",
             "status": phieu.status.name,
             "ngay_gio_kham": ngay_gio,
         })
-    if flag:
-        commit()
     return results
+
+def cap_nhat_trang_thai_lich_kham():
+    with app.app_context():
+        phieu_cho = db.session.query(PhieuDatLich, KhungGio)\
+        .join(KhungGio, PhieuDatLich.khunggio_id == KhungGio.id)\
+        .filter(PhieuDatLich.status == TrangThaiLichHen.Scheduled).all()
+        flag = False
+        for phieu, khung_gio in phieu_cho:
+            end_time = datetime.combine(phieu.ngayKham,khung_gio.endTime)
+            if datetime.now() > end_time:
+                phieu.status = TrangThaiLichHen.Completed
+                flag = True
+        if flag:
+            try:
+                commit()
+            except Exception as e:
+                rollback()
+                print(f"Lỗi cập nhật trạng thái lịch khám: {e}")
+
 
 def get_ngay_chua_sap_lich_gan_nhat():
     """

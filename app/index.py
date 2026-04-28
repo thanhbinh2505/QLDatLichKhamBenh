@@ -2,9 +2,11 @@ from flask import render_template, request, url_for, jsonify
 from sqlalchemy import try_cast
 from sqlalchemy.testing.exclusions import succeeds_if
 from werkzeug.utils import redirect
+from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta, date
 from flask_login import login_user, logout_user, login_required, current_user
 from app import app, dao, login
+from app.dao import cap_nhat_trang_thai_lich_kham
 from app.models import UserRole, CaLam, LichLamViec, NgayLamViec, PhanCa, TrangThaiBacSi, BenhNhan
 
 
@@ -186,7 +188,6 @@ def register_routes(app):
             return jsonify(ds_lich_kham), 200
         except Exception as e:
             import traceback
-            print("=== LỖI API LẤY LỊCH KHÁM ===")
             traceback.print_exc()
             return jsonify([]), 500
 
@@ -338,5 +339,11 @@ def load_user(id):
 
 if __name__ == '__main__':
     register_routes(app)
-    with app.app_context():
-        app.run(debug=True, port=5000)
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(func=cap_nhat_trang_thai_lich_kham, trigger='interval', minutes=5)
+    scheduler.start()
+    try:
+        with app.app_context():
+            app.run(debug=True, port=5000, use_reloader=False)
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()

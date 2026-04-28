@@ -1,10 +1,8 @@
-
 import pytest
 from flask import Flask
 from app import db
 from app.models import User
 from app.index import register_routes
-import app.index
 
 def create_app():
     app = Flask(__name__)
