@@ -94,6 +94,7 @@ class CaLam(BaseModel):
     gioKetThuc = Column(Time, nullable=False)
 
     danh_sach_phan_ca = relationship('PhanCa', backref='ca_lam', lazy=True)
+    danh_sach_khung_gio = relationship('KhungGio', backref='ca_lam', lazy=True)
 
     def to_dict(self):
         return {
@@ -154,6 +155,7 @@ class KhungGio(BaseModel):
 
     startTime = Column(Time, nullable=False)
     endTime = Column(Time, nullable=False)
+    calam_id = Column(Integer, ForeignKey('ca_lam.id'), nullable=False)
 
     def __str__(self):
         return f"{self.startTime.strftime('%H:%M')} - {self.endTime.strftime('%H:%M')}"
@@ -182,10 +184,14 @@ if __name__ == '__main__':
 
         def create_mock_data():
             print("Bắt đầu tạo dữ liệu mẫu...")
-
-            # Mật khẩu chung cho tất cả các user là '123456'
             default_password = '123456'
-
+            # 4. TẠO CA LÀM (Sáng, Chiều)
+            print("Đang tạo Ca làm...")
+            ca_sang = CaLam(tenCa='Ca Sáng', gioBatDau=time(8, 0), gioKetThuc=time(12, 00))
+            ca_chieu = CaLam(tenCa='Ca Chiều', gioBatDau=time(13, 0), gioKetThuc=time(17, 0))
+            db.session.add_all([ca_sang, ca_chieu])
+            db.session.flush()
+            ca_lam_list = [ca_sang, ca_chieu]
             danh_sach_gio = [
                 ("08:00", "08:30"), ("08:30", "09:00"), ("09:00", "09:30"), ("09:30", "10:00"),
                 ("10:00", "10:30"), ("10:30", "11:00"), ("11:00", "11:30"), ("11:30", "12:00"),
@@ -196,11 +202,13 @@ if __name__ == '__main__':
             for start_str, end_str in danh_sach_gio:
                 start_t = datetime.strptime(start_str, "%H:%M").time()
                 end_t = datetime.strptime(end_str, "%H:%M").time()
-                kg = KhungGio(startTime=start_t, endTime=end_t)
+
+                calam_id_hien_tai = ca_sang.id if start_t < time(12, 0) else ca_chieu.id
+
+                kg = KhungGio(startTime=start_t, endTime=end_t, calam_id=calam_id_hien_tai)
                 db.session.add(kg)
 
             db.session.flush()
-
             # 1. TẠO 2 ADMIN
             print("Đang tạo Admin...")
             for i in range(1, 3):
@@ -264,14 +272,6 @@ if __name__ == '__main__':
                 )
                 db.session.add(bac_si)
                 danh_sach_bac_si.append(bac_si)
-
-            # 4. TẠO CA LÀM (Sáng, Chiều)
-            print("Đang tạo Ca làm...")
-            ca_sang = CaLam(tenCa='Ca Sáng', gioBatDau=time(8, 0), gioKetThuc=time(12, 00))
-            ca_chieu = CaLam(tenCa='Ca Chiều', gioBatDau=time(13, 0), gioKetThuc=time(17, 0))
-            db.session.add_all([ca_sang, ca_chieu])
-            db.session.flush()
-            ca_lam_list = [ca_sang, ca_chieu]
 
             # 5. TẠO LỊCH LÀM VIỆC CHO 1 THÁNG TỚI
             print("Đang tạo Lịch làm việc và Phân ca...")

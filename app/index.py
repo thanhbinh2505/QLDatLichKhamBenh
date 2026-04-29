@@ -1,10 +1,15 @@
 from flask import render_template, request, url_for, jsonify
+from sqlalchemy import try_cast
 from sqlalchemy.testing.exclusions import succeeds_if
 from werkzeug.utils import redirect
+from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta, date
 from flask_login import login_user, logout_user, login_required, current_user
 from app import app, dao, login
-from app.models import UserRole, CaLam, LichLamViec, NgayLamViec, PhanCa, TrangThaiBacSi
+from app.dao import cap_nhat_trang_thai_lich_kham
+from app.models import UserRole, CaLam, LichLamViec, NgayLamViec, PhanCa, TrangThaiBacSi, BenhNhan
+
+
 def register_routes(app):
     @app.route('/')
     def index():
@@ -29,6 +34,9 @@ def register_routes(app):
                 username_val = username_or_email
             else:
                 login_user(user = user)
+                next_page = request.args.get('next')
+                if next_page:
+                    return redirect(next_page)
                 if user.role == UserRole.ADMIN:
                     return redirect('/admin')
                 elif user.role == UserRole.BACSI:
@@ -147,6 +155,41 @@ def register_routes(app):
                 "loai_thong_bao": "error",
                 "message": f"Hệ thống bận hoặc có lỗi: {str(e)}"
             }), 500
+
+    @app.route('/hoso')
+    @login_required
+    def ho_so():
+        if current_user.role != UserRole.BENHNHAN:
+            return redirect('/')
+        benh_nhan = BenhNhan.query.filter_by(user_id=current_user.id).first()
+        return render_template('ho_so.html', benh_nhan=benh_nhan)
+
+    @app.route('/api/huy-lich/<int:phieu_id>', methods=['POST'])
+    @login_required
+    def huy_lich_api(phieu_id):
+        success, message = dao.huy_lich_kham(phieu_id, current_user)
+
+        if success:
+            return jsonify({
+                "success": True,
+                "message": message
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": message
+            }), 400
+
+    @app.route('/api/ho-so/lich-kham')
+    @login_required
+    def get_lich_kham_ho_so():
+        try:
+            ds_lich_kham = dao.get_lich_da_dat(user_id=current_user.id)
+            return jsonify(ds_lich_kham), 200
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return jsonify([]), 500
 
     @app.route('/admin')
     @login_required
@@ -295,5 +338,12 @@ def load_user(id):
     return dao.get_user_by_id(id)
 
 if __name__ == '__main__':
-    with app.app_context():
-        app.run(debug=True, port=5000)
+    register_routes(app)
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(func=cap_nhat_trang_thai_lich_kham, trigger='interval', minutes=5)
+    scheduler.start()
+    try:
+        with app.app_context():
+            app.run(debug=True, port=5000, use_reloader=False)
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()

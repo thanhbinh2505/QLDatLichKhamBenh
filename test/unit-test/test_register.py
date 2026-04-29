@@ -1,9 +1,8 @@
-from test_base import test_session, test_app
+from test_base import test_session, test_app, test_client
 from app.models import User, BenhNhan, UserRole
 from app.dao import them_benhnhan
 from datetime import datetime
 import pytest
-
 
 def test_success(test_session):
     ngaysinh = datetime.strptime("2005-03-10", "%Y-%m-%d").date()
@@ -30,7 +29,6 @@ def test_success(test_session):
     assert benhnhan.ngaySinh == ngaysinh
     assert benhnhan.diaChi == 'Gia Lai'
     assert benhnhan.thoiGianMoKhoa == None
-
 
 @pytest.mark.parametrize('password', [
     "Aa1@567",
@@ -68,7 +66,6 @@ def test_invalid_username(test_session, username):
             gioitinh=True
         )
 
-
 def test_username_exsited(test_session):
     them_benhnhan(
         username='user1',
@@ -86,7 +83,6 @@ def test_username_exsited(test_session):
             hoten='Do Van A',
             gioitinh = False
         )
-
 
 def test_email_registered(test_session):
     them_benhnhan(
@@ -122,7 +118,5 @@ def test_invalid_email(test_session, email):
             hoten='Do Van Quan',
             gioitinh=True
         )
-
-
 
 # if __name__ == '__main__':
