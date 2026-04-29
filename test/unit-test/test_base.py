@@ -1,6 +1,6 @@
 import pytest
 from flask import Flask
-from app import db
+from app import db, login
 from app.models import User
 from app.index import register_routes
 
@@ -10,7 +10,7 @@ def create_app():
     app.config["TESTING"] = True
     db.init_app(app)
     app.secret_key = 'difhhfoiwufowirgoi'
-
+    login.init_app(app)
     register_routes(app=app)
     return app
 
