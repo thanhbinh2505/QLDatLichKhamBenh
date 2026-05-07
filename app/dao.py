@@ -6,7 +6,8 @@ from sqlalchemy import func, and_, or_, false
 from app import app, db
 from app.models import (User, BenhNhan, BacSi, PhieuDatLich,
                         LichLamViec, TrangThaiLichHen, UserRole, CaLam,
-                        NgayLamViec, PhanCa, KhungGio, TrangThaiBacSi)
+                        NgayLamViec, PhanCa, KhungGio, TrangThaiBacSi,
+                        NgayNghiBacSi, TrangThaiDuyet)
 
 import re
 import json
@@ -19,30 +20,11 @@ def rollback():
 
 def them_benhnhan(username, hoten, email, gioitinh, password, ngaysinh=None, diachi=None):
     try:
-        if len(username) < 5:
-            raise ValueError("Username phải ít nhất 5 kí tự!")
         if User.query.filter(User.username.__eq__(username)).first():
-            raise ValueError("Username đã tồn tại!")
-        if not hoten or not hoten.strip():
-            raise ValueError("Họ tên không được để trống!")
+            return False, "Username đã tồn tại!"
+        
         if User.query.filter(User.email.__eq__(email)).first():
-            raise ValueError("Email đã có tài khoản!")
-        if not email or not email.strip():
-            raise ValueError("Email không được để trống!")
-        if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", email.strip()):
-            raise ValueError("Email không đúng định dạng!")
-        if len(password) < 8:
-            raise ValueError("Mật khẩu phải ít nhất 8 kí tự!")
-        if " " in password:
-            raise ValueError("Mật khẩu không được chứa khoảng trắng!")
-        if not re.search(r'[0-9]', password):
-            raise ValueError("Mật khẩu phải chứa số!")
-        if not re.search(r'[a-z]', password):
-            raise ValueError("Mật khẩu phải chứa chữ thường!")
-        if not re.search(r'[A-Z]', password):
-            raise ValueError("Mật khẩu phải chứa chữ hoa!")
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            raise ValueError("Mật khẩu phải chứa ít nhất một kí tự đặc biệt!")
+            return False, "Email đã có tài khoản!"
 
         user = User(username=username,
                     hoTen=hoten,
@@ -62,7 +44,7 @@ def them_benhnhan(username, hoten, email, gioitinh, password, ngaysinh=None, dia
         )
         db.session.add(benhnhan)
         db.session.commit()
-        return benhnhan
+        return True, "Thêm thành công!"
 
     except Exception as e:
         db.session.rollback()
@@ -77,6 +59,64 @@ def get_user_by_id(id):
 
 def get_list_doctor():
     return BacSi.query.join(User, BacSi.user_id == User.id).all()
+
+def lay_bac_si_co_lich_lam_viec(ngay):
+    """
+    Lấy danh sách các bác sĩ có lịch làm việc (PhanCa) trong một ngày cụ thể
+    và trạng thái là HoatDong.
+    """
+    bac_si_co_lich = db.session.query(BacSi).join(PhanCa, BacSi.id == PhanCa.id_BacSi)\
+        .filter(PhanCa.thuocNgay == ngay, PhanCa.trangThai == TrangThaiBacSi.HoatDong)\
+        .all()
+    return bac_si_co_lich
+
+def lay_bac_si_nghi_phep(ngay):
+    """
+    Lấy danh sách các bác sĩ có ngày nghỉ phép đã được duyệt bao gồm ngày được truyền vào.
+    """
+    bac_si_nghi_phep = db.session.query(BacSi).join(NgayNghiBacSi, BacSi.id == NgayNghiBacSi.bacsi_id)\
+        .filter(
+            NgayNghiBacSi.ngayBatDau <= ngay,
+            NgayNghiBacSi.ngayKetThuc >= ngay,
+            NgayNghiBacSi.trangThai == TrangThaiDuyet.DaDuyet
+        ).all()
+    return bac_si_nghi_phep
+
+def tao_nghi_phep_bac_si(bacsi_id, ngay_bat_dau, ngay_ket_thuc, ly_do=None):
+    ds_nghi_phep = db.session.query(NgayNghiBacSi).filter(
+        NgayNghiBacSi.bacsi_id == bacsi_id,
+        NgayNghiBacSi.ngayBatDau <= ngay_ket_thuc,
+        NgayNghiBacSi.ngayKetThuc >= ngay_bat_dau,
+        NgayNghiBacSi.trangThai != TrangThaiDuyet.TuChoi
+    ).first()
+
+    if ds_nghi_phep:
+        return False, "Bác sĩ đã có lịch nghỉ phép hoặc đang chờ duyệt trong khoảng thời gian này."
+
+    try:
+        nghi_phep = NgayNghiBacSi(
+            bacsi_id=bacsi_id,
+            ngayBatDau=ngay_bat_dau,
+            ngayKetThuc=ngay_ket_thuc,
+            lyDo=ly_do,
+            trangThai=TrangThaiDuyet.DaDuyet 
+        )
+        db.session.add(nghi_phep)
+
+        phan_cas = db.session.query(PhanCa).filter(
+            PhanCa.id_BacSi == bacsi_id,
+            PhanCa.thuocNgay >= ngay_bat_dau,
+            PhanCa.thuocNgay <= ngay_ket_thuc
+        ).all()
+
+        for pc in phan_cas:
+            pc.trangThai = TrangThaiBacSi.NghiPhep
+
+        db.session.commit()
+        return True, "Tạo nghỉ phép thành công."
+    except Exception as e:
+        db.session.rollback()
+        raise e
 
 def get_list_shift():
     ds_calam = CaLam.query.all()
@@ -315,7 +355,6 @@ def cap_nhat_trang_thai_lich_kham():
                 rollback()
                 print(f"Lỗi cập nhật trạng thái lịch khám: {e}")
 
-
 def get_ngay_chua_sap_lich_gan_nhat():
     """
     Tìm ngày gần nhất chưa được phân lịch làm việc.
@@ -337,12 +376,6 @@ def get_ngay_chua_sap_lich_gan_nhat():
     return ngay_tiep_theo
 
 def lay_ngay_lam_viec(ngay_bat_dau, ngay_ket_thuc):
-    if not isinstance(ngay_bat_dau, date) or not isinstance(ngay_ket_thuc, date):
-        raise ValueError("ngay_bat_dau và ngay_ket_thuc phải là kiểu datetime.date")
-
-    if ngay_ket_thuc < ngay_bat_dau:
-        raise ValueError("Ngày kết thúc không thể nhỏ hơn ngày bắt đầu")
-
     ds_ngay_lam_viec = db.session.query(NgayLamViec).filter(
         NgayLamViec.ngay >= ngay_bat_dau,
         NgayLamViec.ngay <= ngay_ket_thuc
@@ -351,43 +384,71 @@ def lay_ngay_lam_viec(ngay_bat_dau, ngay_ket_thuc):
     return ds_ngay_lam_viec
 
 def lay_danh_sach_phan_ca(ngay):
-    ngay_lam_viec = NgayLamViec.query.get(ngay)
+    return db.session.query(PhanCa).filter(
+        PhanCa.thuocNgay == ngay,
+        PhanCa.trangThai == TrangThaiBacSi.HoatDong
+    ).all()
 
-    if not ngay_lam_viec:
-        return []
+def lay_lich_tuan(ngay_bat_dau, ngay_ket_thuc):
+    """
+    lay_lich_tuan(date(2026, 5, 4), date(2026, 5, 10))
+    
+    Returns:
+        dict:
+            {
+                "T2": {"1": [1, 2], "2": [1]},   # key = id CaLam (string)
+                "T3": { ... },
+                ...           # chỉ có các ngày có phân ca
+            }
+    """
 
-    return ngay_lam_viec.danh_sach_phan_ca
+    ds_ngay_lam_viec = lay_ngay_lam_viec(ngay_bat_dau, ngay_ket_thuc)
+
+    day_map = {0: 'T2', 1: 'T3', 2: 'T4', 3: 'T5', 4: 'T6', 5: 'T7', 6: 'CN'}
+    lich_tuan = {}
+
+    for ngay_lam_viec in ds_ngay_lam_viec:
+        thu = day_map[ngay_lam_viec.ngay.weekday()]
+        lich_tuan[thu] = {}
+
+        ds_phan_ca = lay_danh_sach_phan_ca(ngay_lam_viec.ngay)
+
+        for pc in ds_phan_ca:
+            ca_id = pc.id_CaLam
+            bs_id = pc.id_BacSi
+
+            if ca_id not in lich_tuan[thu]:
+                lich_tuan[thu][ca_id] = []
+
+            lich_tuan[thu][ca_id].append(bs_id)
+    return lich_tuan
 
 def tao_lich_lam_viec(ngay_bat_dau, ngay_ket_thuc):
-
-    if ngay_bat_dau is None or ngay_ket_thuc is None:
-        raise ValueError("Ngày bắt đầu và ngày kết thúc không được để trống.")
-
-    if ngay_ket_thuc < ngay_bat_dau:
-        raise ValueError("Ngày kết thúc không thể diễn ra trước ngày bắt đầu.")
-
     lich_da_tao = db.session.query(LichLamViec).filter(
         LichLamViec.ngayBatDau <= ngay_ket_thuc,
         LichLamViec.ngayKetThuc >= ngay_bat_dau
     ).first()
 
     if lich_da_tao:
-        raise ValueError(
-            f"Trùng lịch!(Đã tồn tại lịch từ {lich_da_tao.ngayBatDau} đến {lich_da_tao.ngayKetThuc}).")
+        return False, f"Đã tồn tại lịch từ {lich_da_tao.ngayBatDau.strftime('%d/%m/%Y')} đến {lich_da_tao.ngayKetThuc.strftime('%d/%m/%Y')})."
 
     try:
         lich_moi = LichLamViec(ngayBatDau=ngay_bat_dau, ngayKetThuc=ngay_ket_thuc)
         db.session.add(lich_moi)
 
         db.session.flush()
-        return lich_moi
+        return True, lich_moi
 
     except Exception as e:
         db.session.rollback()
         raise e
 
-
 def tao_ngay_lam_viec(ngay, id_lichlamviec):
+    lich = db.session.get(LichLamViec, id_lichlamviec)
+    if not lich:
+        return False, "Lịch làm việc không tồn tại."
+    if ngay < lich.ngayBatDau or ngay > lich.ngayKetThuc:
+        return False, "Ngày làm việc phải nằm trong phạm vi của lịch làm việc."
 
     try:
         ngay_moi = NgayLamViec(
@@ -396,10 +457,9 @@ def tao_ngay_lam_viec(ngay, id_lichlamviec):
         )
 
         db.session.add(ngay_moi)
-
         db.session.flush()
 
-        return ngay_moi
+        return True, ngay_moi
 
     except Exception as e:
         db.session.rollback()
@@ -413,6 +473,9 @@ def tao_phan_ca(id_bacsi, id_calam, thuoc_ngay):
         if not CaLam.query.get(id_calam):
             return False, "ID ca làm không tồn tại!"
 
+        if not NgayLamViec.query.get(thuoc_ngay):
+            return False, "Ngày làm việc không tồn tại!"
+
         pc_ton_tai = PhanCa.query.filter(
             PhanCa.id_BacSi == id_bacsi,
             PhanCa.id_CaLam == id_calam,
@@ -422,10 +485,20 @@ def tao_phan_ca(id_bacsi, id_calam, thuoc_ngay):
         if pc_ton_tai:
             return False, "Bác sĩ này đã được phân ca này trong ngày rồi."
 
+        nghi_phep = NgayNghiBacSi.query.filter(
+            NgayNghiBacSi.bacsi_id == id_bacsi,
+            NgayNghiBacSi.trangThai == TrangThaiDuyet.DaDuyet,
+            NgayNghiBacSi.ngayBatDau <= thuoc_ngay,
+            NgayNghiBacSi.ngayKetThuc >= thuoc_ngay
+        ).first()
+
+        trang_thai_pc = TrangThaiBacSi.NghiPhep if nghi_phep else TrangThaiBacSi.HoatDong
+
         moi = PhanCa(
             id_BacSi=id_bacsi,
             id_CaLam=id_calam,
-            thuocNgay=thuoc_ngay
+            thuocNgay=thuoc_ngay,
+            trangThai=trang_thai_pc
         )
 
         db.session.add(moi)
@@ -434,8 +507,46 @@ def tao_phan_ca(id_bacsi, id_calam, thuoc_ngay):
 
     except Exception as e:
         db.session.rollback()
-        print(f"Lỗi tại tao_phan_ca: {str(e)}")
         return False, "Có lỗi xảy ra trong quá trình lưu dữ liệu."
 
+def tao_lich(lich_tuan, ngay_bat_dau, ngay_ket_thuc):
+    success, output = tao_lich_lam_viec(ngay_bat_dau, ngay_ket_thuc)
+    if not success:
+        return False, output
+    lich_moi = output
+
+    day_map = {0: 'T2', 1: 'T3', 2: 'T4', 3: 'T5', 4: 'T6', 5: 'T7', 6: 'CN'}
+
+    current_date = ngay_bat_dau
+    while current_date <= ngay_ket_thuc:
+        thu_cua_ngay = day_map[current_date.weekday()]
+
+        if thu_cua_ngay in lich_tuan:
+
+            success, output = tao_ngay_lam_viec(current_date, lich_moi.id)
+            if not success:
+                return False, output
+            ngay_moi = output
+
+            danh_sach_ca = lich_tuan[thu_cua_ngay]
+
+            for ca_id_str, bac_si_ids in danh_sach_ca.items():
+                ca_id = ca_id_str
+
+                for bs_id in bac_si_ids:
+                    success, output = tao_phan_ca(bs_id, ca_id, ngay_moi.ngay)
+
+                    if not success:
+                        return False, output
+
+        current_date += timedelta(days=1)
+
+    commit()
+    return True, "Tạo lịch thành công!"
 
 
+if __name__ == '__main__':
+    with app.app_context():
+        lich = lay_lich_tuan(date(2026, 4, 28), date(2026, 5, 3))
+        print(lich)
+        print(len(lich))

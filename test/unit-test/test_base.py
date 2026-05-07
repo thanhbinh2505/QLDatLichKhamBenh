@@ -5,7 +5,7 @@ from app.models import User
 from app.index import register_routes
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask('app')
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
     app.config["TESTING"] = True
     db.init_app(app)

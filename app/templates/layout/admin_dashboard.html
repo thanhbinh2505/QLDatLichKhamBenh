@@ -9,10 +9,12 @@
     <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out transform -translate-x-full md:relative md:translate-x-0 md:flex">
 
         <div class="h-16 flex items-center justify-between px-6 border-b border-gray-100">
-            <h1 class="text-xl font-bold text-primary flex items-center gap-2">
-                <i data-lucide="shield-check" class="w-6 h-6"></i>
-                <span>Admin Portal</span>
-            </h1>
+            <a href="/" class="flex items-center gap-2">
+                <h1 class="text-xl font-bold text-primary flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                    <span>Admin Portal</span>
+                </h1>
+            </a>
             <button id="close-menu-btn" class="md:hidden text-gray-400 hover:text-red-500 p-1 bg-gray-50 rounded-lg">
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
@@ -24,6 +26,13 @@
            {% if active_tab == 'lich_lam_viec' %} bg-blue-50 text-primary {% else %} text-slate-600 hover:bg-blue-50 hover:text-primary {% endif %}">
                 <i data-lucide="calendar-days" class="w-5 h-5"></i>
                 Quản lý lịch làm việc
+            </a>
+
+            <a href="/admin/bac-si"
+               class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium
+           {% if active_tab == 'bac_si' %} bg-blue-50 text-primary {% else %} text-slate-600 hover:bg-blue-50 hover:text-primary {% endif %}">
+                <i data-lucide="stethoscope" class="w-5 h-5"></i>
+                Quản lý bác sĩ
             </a>
 
             <a href="/admin/lich-hen"

@@ -1,0 +1,344 @@
+{% extends 'layout/admin_base.html' %}
+
+{% block title %}Quản lý bác sĩ - Admin{% endblock %}
+
+{% block content_admin %}
+<div class="max-w-7xl mx-auto flex flex-col gap-4 flex-1 min-h-0 w-full">
+    <!-- Header: Title, Search, Add Button -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 w-full shrink-0 bg-white p-4 rounded-xl border border-gray-200 shadow-sm mt-2">
+        <div class="relative w-full sm:w-80 group">
+            <i data-lucide="search"
+                class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-primary transition-colors"></i>
+            <input type="text" id="searchInput" placeholder="Tìm kiếm theo tên, chuyên khoa..."
+                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-slate-50 focus:bg-white transition-all text-sm shadow-sm placeholder:text-gray-400">
+        </div>
+
+        <button class="w-full sm:w-auto bg-primary hover:bg-primaryHover text-white px-5 py-2.5 rounded-xl flex items-center justify-center gap-2 font-medium shadow-btn transition-all duration-300 transform hover:-translate-y-0.5 whitespace-nowrap">
+            <i data-lucide="plus" class="w-5 h-5"></i>
+            Thêm bác sĩ
+        </button>
+    </div>
+
+    <!-- Danh sách bác sĩ -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex-1 flex flex-col min-h-0">
+        <div class="overflow-auto flex-1 min-h-0">
+            <table class="w-full text-sm text-left border-collapse min-w-[800px]">
+                <thead class="bg-slate-50 text-slate-600 border-b border-gray-200 uppercase text-xs sticky top-0 z-10 shadow-sm">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold text-center w-16">ID</th>
+                        <th class="px-6 py-4 font-semibold">
+                            <div class="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors group">
+                                Bác sĩ
+                                <i data-lucide="arrow-up-down" class="w-4 h-4 text-slate-400 group-hover:text-primary"></i>
+                            </div>
+                        </th>
+                        <th class="px-6 py-4 font-semibold">Chuyên khoa</th>
+                        <th class="px-6 py-4 font-semibold">Email</th>
+                        <th class="px-6 py-4 font-semibold">
+                            <div class="relative inline-block w-full min-w-[130px] text-left">
+                                <button type="button" class="flex items-center gap-4 w-full hover:text-primary transition-all bg-transparent border-none text-slate-600 font-semibold cursor-pointer outline-none focus:ring-0 uppercase text-xs p-0 group" onclick="toggleDropdown(event, 'filter-status')">
+                                    <span id="filter-status-text">Trạng thái</span>
+                                    <i data-lucide="filter" class="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors"></i>
+                                </button>
+                                <!-- Custom Dropdown menu -->
+                                <div id="filter-status" class="dropdown-menu hidden absolute left-0 mt-3 w-48 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100 z-50 py-1.5 font-normal normal-case">
+                                    <div class="px-4 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Lọc theo</div>
+                                    
+                                    <button class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors" 
+                                        onclick="document.getElementById('filter-status-text').innerText='Trạng thái'; document.getElementById('filter-status').classList.add('hidden'); filterByStatus('Tất cả'); event.stopPropagation();">
+                                        <i data-lucide="list-filter" class="w-4 h-4 text-slate-400"></i>
+                                        Tất cả
+                                    </button>
+                                    
+                                    <button class="w-full text-left px-4 py-2 mt-1 text-sm text-green-700 hover:bg-green-50 flex items-center gap-2 transition-colors" 
+                                        onclick="document.getElementById('filter-status-text').innerText='Có lịch hôm nay'; document.getElementById('filter-status').classList.add('hidden'); filterByStatus('Có lịch hôm nay'); event.stopPropagation();">
+                                        <span class="w-2 h-2 rounded-full bg-green-500 ml-1 mr-1"></span>
+                                        Có lịch hôm nay
+                                    </button>
+                                    
+                                    <button class="w-full text-left px-4 py-2 mt-1 text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2 transition-colors" 
+                                        onclick="document.getElementById('filter-status-text').innerText='Không có lịch'; document.getElementById('filter-status').classList.add('hidden'); filterByStatus('Không có lịch'); event.stopPropagation();">
+                                        <span class="w-2 h-2 rounded-full bg-amber-500 ml-1 mr-1"></span>
+                                        Không có lịch
+                                    </button>
+                                    
+                                    <button class="w-full text-left px-4 py-2 mt-1 text-sm text-slate-600 hover:bg-slate-100 flex items-center gap-2 transition-colors" 
+                                        onclick="document.getElementById('filter-status-text').innerText='Nghỉ phép'; document.getElementById('filter-status').classList.add('hidden'); filterByStatus('Nghỉ phép'); event.stopPropagation();">
+                                        <span class="w-2 h-2 rounded-full bg-slate-400 ml-1 mr-1"></span>
+                                        Nghỉ phép
+                                    </button>
+                                </div>
+                            </div>
+                        </th>
+                        <th class="px-6 py-4 font-semibold text-right"></th>
+                    </tr>
+                </thead>
+                <tbody id="doctorTableBody" class="divide-y divide-gray-200 text-slate-700">
+                    {% for bs in danh_sach_bac_si %}
+                    <tr class="hover:bg-slate-50/50 transition-colors">
+                        <td class="px-6 py-4 text-center font-medium text-slate-500">{{ bs.id }}</td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <img src="{{ bs.avatar }}" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-gray-200">
+                                <div>
+                                    <div class="font-bold text-slate-800 text-base">BS. {{ bs.user.hoTen }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 font-medium text-slate-600">{{ bs.chuyenKhoa }}</td>
+                        <td class="px-6 py-4">{{ bs.user.email }}</td>
+                        <td class="px-6 py-4">
+                            {% set status = status_map[bs.id] %}
+                            {% if status == 'dang_lam_viec' %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
+                                Có lịch hôm nay
+                            </span>
+                            {% elif status == 'nghi_phep' %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                Nghỉ phép
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">
+                                Không có lịch
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right relative">
+                            <div class="flex items-center justify-end">
+                                <button class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onclick="toggleDropdown(event, 'dropdown-{{ bs.id }}')">
+                                    <i data-lucide="more-vertical" class="w-5 h-5"></i>
+                                </button>
+                                <!-- Dropdown Menu -->
+                                <div id="dropdown-{{ bs.id }}" class="dropdown-menu hidden absolute right-6 top-10 w-48 bg-white rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.1)] border border-gray-100 z-10 py-1 text-left">
+                                    <button class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors" onclick="openLeaveModal('{{ bs.id }}', '{{ bs.user.hoTen }}')">
+                                        <i data-lucide="calendar-plus" class="w-4 h-4 text-slate-400"></i> Tạo nghỉ phép
+                                    </button>
+                                    <button class="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 transition-colors">
+                                        <i data-lucide="edit" class="w-4 h-4"></i> Chỉnh sửa thông tin
+                                    </button>
+                                    <div class="h-px bg-gray-100 my-1"></div>
+                                    <button class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i> Xóa
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="noResultRow" style="display: none;">
+                        <td colspan="6" class="px-6 py-10 text-center text-slate-500 font-medium">
+                            <div class="flex flex-col items-center justify-center gap-2">
+                                <i data-lucide="search-x" class="w-8 h-8 text-slate-300"></i>
+                                <span>Không tìm thấy bác sĩ nào phù hợp</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tạo nghỉ phép -->
+<div id="leaveModal" class="hidden fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300 opacity-0 pointer-events-none">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform scale-95 transition-all duration-300">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-slate-50">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <i data-lucide="calendar-plus" class="w-5 h-5 text-primary"></i>
+                Tạo ngày nghỉ phép
+            </h3>
+            <button type="button" class="text-slate-400 hover:text-red-500 transition-colors" onclick="closeLeaveModal()">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+        
+        <!-- Body -->
+        <div class="p-6">
+            <form id="leaveForm" class="flex flex-col gap-4">
+                <input type="hidden" id="leaveDoctorId" name="bacsi_id">
+                
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Bác sĩ</label>
+                    <input type="text" id="leaveDoctorName" readonly class="w-full px-4 py-2 rounded-xl border border-gray-200 bg-slate-50 text-slate-600 focus:outline-none text-sm">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Từ ngày</label>
+                        <input type="date" id="leaveStartDate" name="ngayBatDau" required class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Đến ngày</label>
+                        <input type="date" id="leaveEndDate" name="ngayKetThuc" required class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Lý do (tuỳ chọn)</label>
+                    <textarea id="leaveReason" name="lyDo" rows="3" placeholder="Nhập lý do nghỉ phép..." class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all text-sm resize-none"></textarea>
+                </div>
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-gray-100 flex items-center justify-end gap-3">
+            <button type="button" class="px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-xl transition-colors" onclick="closeLeaveModal()">
+                Hủy
+            </button>
+            <button type="button" class="px-5 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primaryHover rounded-xl shadow-btn transition-transform transform hover:-translate-y-0.5 flex items-center gap-2" onclick="submitLeave()">
+                <i data-lucide="check" class="w-4 h-4"></i> Xác nhận
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openLeaveModal(doctorId, doctorName) {
+        // Đóng dropdown trước
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.classList.add('hidden');
+        });
+
+        document.getElementById('leaveDoctorId').value = doctorId;
+        document.getElementById('leaveDoctorName').value = 'BS. ' + doctorName;
+        
+        // Đặt mặc định là ngày hôm nay
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('leaveStartDate').value = today;
+        document.getElementById('leaveEndDate').value = today;
+        document.getElementById('leaveReason').value = '';
+
+        const modal = document.getElementById('leaveModal');
+        modal.classList.remove('hidden', 'pointer-events-none');
+        // Transition
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            modal.querySelector('div').classList.remove('scale-95');
+        }, 10);
+    }
+
+    function closeLeaveModal() {
+        const modal = document.getElementById('leaveModal');
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        modal.querySelector('div').classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+
+    function submitLeave() {
+        const bacsiId = document.getElementById('leaveDoctorId').value;
+        const ngayBatDau = document.getElementById('leaveStartDate').value;
+        const ngayKetThuc = document.getElementById('leaveEndDate').value;
+        const lyDo = document.getElementById('leaveReason').value;
+
+        if (!bacsiId || !ngayBatDau || !ngayKetThuc) {
+            alert('Vui lòng điền đầy đủ thông tin!');
+            return;
+        }
+
+        if (ngayKetThuc < ngayBatDau) {
+            alert('Ngày kết thúc không được nhỏ hơn ngày bắt đầu!');
+            return;
+        }
+
+        fetch('/api/admin/tao-nghi-phep', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                bacsi_id: parseInt(bacsiId),
+                ngayBatDau: ngayBatDau,
+                ngayKetThuc: ngayKetThuc,
+                lyDo: lyDo
+            })
+        })
+        .then(res => res.json().then(data => ({status: res.status, body: data})))
+        .then(response => {
+            if (response.status === 200) {
+                alert('Tạo nghỉ phép thành công!');
+                closeLeaveModal();
+                window.location.reload();
+            } else {
+                alert('Lỗi: ' + response.body.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Đã xảy ra lỗi kết nối. Vui lòng thử lại.');
+        });
+    }
+    function toggleDropdown(event, id) {
+        event.stopPropagation();
+        // Đóng tất cả dropdown đang mở
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            if (menu.id !== id) {
+                menu.classList.add('hidden');
+            }
+        });
+        // Toggle dropdown hiện tại
+        const menu = document.getElementById(id);
+        menu.classList.toggle('hidden');
+    }
+
+    // Đóng dropdown khi click ra ngoài
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+            menu.classList.add('hidden');
+        });
+    });
+
+    let currentKeyword = '';
+    let currentStatus = 'Tất cả';
+
+    function applyFilters() {
+        const tableBody = document.getElementById('doctorTableBody');
+        if (!tableBody) return;
+        const rows = tableBody.querySelectorAll('tr:not(#noResultRow)');
+        const noResultRow = document.getElementById('noResultRow');
+        let hasResult = false;
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 4) {
+                const name = cells[1].textContent.toLowerCase();
+                const email = cells[3].textContent.toLowerCase();
+                const status = cells[4].textContent.trim();
+                
+                const matchesKeyword = name.includes(currentKeyword) || email.includes(currentKeyword);
+                const matchesStatus = currentStatus === 'Tất cả' || status === currentStatus;
+
+                if (matchesKeyword && matchesStatus) {
+                    row.style.display = '';
+                    hasResult = true;
+                } else {
+                    row.style.display = 'none';
+                }
+            }
+        });
+
+        if (noResultRow) {
+            noResultRow.style.display = hasResult ? 'none' : '';
+        }
+    }
+
+    function filterByStatus(status) {
+        currentStatus = status;
+        applyFilters();
+    }
+
+    // Chức năng tìm kiếm
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                currentKeyword = e.target.value.toLowerCase().trim();
+                applyFilters();
+            });
+        }
+    });
+</script>
+{% endblock %}

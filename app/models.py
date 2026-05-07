@@ -28,6 +28,11 @@ class TrangThaiBacSi(RoleEnum):
     HoatDong = 1
     NghiPhep = 2
 
+class TrangThaiDuyet(RoleEnum):
+    ChoDuyet = 1
+    DaDuyet = 2
+    TuChoi = 3
+
 class User(UserMixin, BaseModel):
     __tablename__ = 'user'
 
@@ -168,6 +173,17 @@ class KhungGio(BaseModel):
             "label": f"{self.startTime.strftime('%H:%M')} - {self.endTime.strftime('%H:%M')}"
         }
 
+class NgayNghiBacSi(BaseModel):
+    __tablename__ = 'ngay_nghi_bac_si'
+
+    bacsi_id = Column(Integer, ForeignKey('bacsi.id'), nullable=False)
+    ngayBatDau = Column(Date, nullable=False)
+    ngayKetThuc = Column(Date, nullable=False)
+    lyDo = Column(String(255), nullable=True)
+    trangThai = Column(Enum(TrangThaiDuyet), default=TrangThaiDuyet.ChoDuyet, nullable=False)
+
+    bac_si = relationship('BacSi', backref='danh_sach_ngay_nghi', lazy=True)
+
 if __name__ == '__main__':
     with app.app_context():
         db.drop_all()
@@ -274,40 +290,40 @@ if __name__ == '__main__':
                 danh_sach_bac_si.append(bac_si)
 
             # 5. TẠO LỊCH LÀM VIỆC CHO 1 THÁNG TỚI
-            print("Đang tạo Lịch làm việc và Phân ca...")
-            today = date.today()
-            next_month = today + timedelta(days=30)
+            # print("Đang tạo Lịch làm việc và Phân ca...")
+            # today = date.today()
+            # next_month = today + timedelta(days=40)
 
-            lich_lam_viec = LichLamViec(ngayBatDau=today, ngayKetThuc=next_month)
-            db.session.add(lich_lam_viec)
-            db.session.flush()
+            # lich_lam_viec = LichLamViec(ngayBatDau=today, ngayKetThuc=next_month)
+            # db.session.add(lich_lam_viec)
+            # db.session.flush()
 
-            # Tạo các ngày làm việc và phân ca cho từng ngày
-            for i in range(40):  # 0 đến 30 ngày
-                current_date = today + timedelta(days=i)
+            # # Tạo các ngày làm việc và phân ca cho từng ngày
+            # for i in range(41):  # 0 đến 30 ngày
+            #     current_date = today + timedelta(days=i)
 
-                # Tạo bản ghi Ngày Làm Việc
-                ngay_lam_viec = NgayLamViec(ngay=current_date, id_LichLamViec=lich_lam_viec.id)
-                db.session.add(ngay_lam_viec)
-                db.session.flush()
+            #     # Tạo bản ghi Ngày Làm Việc
+            #     ngay_lam_viec = NgayLamViec(ngay=current_date, id_LichLamViec=lich_lam_viec.id)
+            #     db.session.add(ngay_lam_viec)
+            #     db.session.flush()
 
-                # Phân ca ngẫu nhiên cho các bác sĩ trong ngày hôm đó
-                for bs in danh_sach_bac_si:
-                    # Random xem bác sĩ này hôm nay làm mấy ca (0 = nghỉ, 1 = làm 1 ca, 2 = làm cả ngày)
-                    so_ca_lam = random.randint(0, 2)
+            #     # Phân ca ngẫu nhiên cho các bác sĩ trong ngày hôm đó
+            #     for bs in danh_sach_bac_si:
+            #         # Random xem bác sĩ này hôm nay làm mấy ca (0 = nghỉ, 1 = làm 1 ca, 2 = làm cả ngày)
+            #         so_ca_lam = random.randint(0, 2)
 
-                    if so_ca_lam > 0:
-                        # Random chọn ca (nếu làm 1 ca thì chọn ngẫu nhiên sáng/chiều, 2 ca thì chọn cả 2)
-                        ca_duoc_chon = random.sample(ca_lam_list, so_ca_lam)
+            #         if so_ca_lam > 0:
+            #             # Random chọn ca (nếu làm 1 ca thì chọn ngẫu nhiên sáng/chiều, 2 ca thì chọn cả 2)
+            #             ca_duoc_chon = random.sample(ca_lam_list, so_ca_lam)
 
-                        for ca in ca_duoc_chon:
-                            phan_ca = PhanCa(
-                                id_BacSi=bs.id,
-                                thuocNgay=ngay_lam_viec.ngay,
-                                id_CaLam=ca.id,
-                                trangThai=TrangThaiBacSi.HoatDong
-                            )
-                            db.session.add(phan_ca)
+            #             for ca in ca_duoc_chon:
+            #                 phan_ca = PhanCa(
+            #                     id_BacSi=bs.id,
+            #                     thuocNgay=ngay_lam_viec.ngay,
+            #                     id_CaLam=ca.id,
+            #                     trangThai=TrangThaiBacSi.HoatDong
+            #                 )
+            #                 db.session.add(phan_ca)
 
             # LƯU VÀO DATABASE
             try:
