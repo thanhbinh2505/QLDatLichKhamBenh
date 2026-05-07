@@ -3,45 +3,48 @@ from datetime import date
 
 
 class RegisterSchema(Schema):
-    username = fields.Str(required=True, validate=validate.Length(min=5, max=20, error="Username phải từ 5 đến 20 kí tự."), error_messages={
-        "required": "Vui lòng nhập tên đăng nhập."
+    username = fields.Str(required=True, validate=[
+        validate.Length(min=5, max=20, error="Username phải từ 5 đến 20 kí tự!"), 
+        validate.Regexp(r'^\S+$', error="Username không được chứa khoảng trắng!")
+        ], error_messages={
+        "required": "Username không được để trống!"
     })
     
     password = fields.Str(required=True, validate=[
         validate.Length(min=8, error="Mật khẩu phải ít nhất 8 kí tự!"),
         validate.Length(max=255, error="Mật khẩu không được vượt quá 255 kí tự!"),
         validate.Regexp(r'^\S+$', error="Mật khẩu không được chứa khoảng trắng!"),
-        validate.Regexp(r'.*[0-9].*', error="Mật khẩu phải chứa số!"),
-        validate.Regexp(r'.*[a-z].*', error="Mật khẩu phải chứa chữ thường!"),
-        validate.Regexp(r'.*[A-Z].*', error="Mật khẩu phải chứa chữ hoa!"),
+        validate.Regexp(r'.*[0-9].*', error="Mật khẩu phải chứa ít nhất một số!"),
+        validate.Regexp(r'.*[a-z].*', error="Mật khẩu phải chứa ít nhất một chữ thường!"),
+        validate.Regexp(r'.*[A-Z].*', error="Mật khẩu phải chứa ít nhất một chữ hoa!"),
         validate.Regexp(r'.*[!@#$%^&*(),.?":{}|<>].*', error="Mật khẩu phải chứa ít nhất một kí tự đặc biệt!")
     ], error_messages={
-        "required": "Vui lòng nhập mật khẩu."
+        "required": "Password không được để trống!"
     })
     
     hoten = fields.Str(required=True, validate=[
-        validate.Length(max=50, error="Họ tên không được vượt quá 50 ký tự."),
+        validate.Length(max=50, error="Họ tên không được vượt quá 50 ký tự!"),
         validate.Regexp(r'^\s*\S', error="Họ tên không được để trống!")
     ], error_messages={
-        "required": "Vui lòng nhập họ tên."
+        "required": "Họ tên không được để trống!"
     })
     
-    email = fields.Email(required=True, error_messages={
-        "required": "Vui lòng nhập email.",
-        "invalid": "Email không hợp lệ."
+    email = fields.Email(required=True, validate=[
+        validate.Length(max=100, error="Email không được vượt quá 100 ký tự!"), 
+        ], error_messages={
+        "required": "Email không được để trống!",
+        "invalid": "Email không hợp lệ!"
     })
     
     gioitinh = fields.Str(required=True, validate=validate.OneOf(
-        ["male", "female"], error="Vui lòng chọn giới tính hợp lệ (male/female)."
-    ), error_messages={"required": "Vui lòng chọn giới tính."})
+        ["male", "female"], error="Giới tính không hợp lệ!"
+    ), error_messages={"required": "Giới tính không được để trống!"})
     
     ngaysinh = fields.Date(required=False, allow_none=True, error_messages={
         "invalid": "Ngày sinh không hợp lệ!"
     })
     
-    diachi = fields.Str(required=False, allow_none=True, validate=validate.Length(max=255), error_messages={
-        "length": "Địa chỉ không được vượt quá 255 ký tự."
-    })
+    diachi = fields.Str(required=False, allow_none=True, validate=validate.Length(max=255, error="Địa chỉ không được vượt quá 255 ký tự!"))
 
     @validates('ngaysinh')
     def validate_ngaysinh(self, value, **kwargs):

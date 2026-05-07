@@ -52,9 +52,10 @@ def register_routes(app):
         logout_user()
         return redirect('/')
 
-    @app.route('/register', methods=["get", "post"])
+    @app.route('/register', methods=["GET", "POST"])
     def register():
         err_msg = ""
+        data = {}
         if request.method == 'POST':
             data = request.form.to_dict()
             
@@ -69,24 +70,25 @@ def register_routes(app):
                 err_msg = err.messages[first_error_field][0]
                 
                 return render_template('register.html', err_msg=err_msg)
+                
+            username = data.get("username")
+            password = data.get("password")
+            hoten = data.get("hoten")
+            gioitinh = True if data.get("gioitinh") == 'male' else False
+            email = data.get("email")
+            ngaysinh = data.get("ngaysinh", None)
+            diachi = data.get("diachi", None)
 
-        username = data.get("username")
-        password = data.get("password")
-        hoten = data.get("hoten")
-        gioitinh = True if data.get("gioitinh") == 'male' else False
-        email = data.get("email")
-        ngaysinh = data.get("ngaysinh", None)
-        diachi = data.get("diachi", None)
+            try:
+                success, message = dao.them_benhnhan(username, hoten, email, gioitinh, password,
+                                        ngaysinh=ngaysinh, diachi=diachi)
+                if success:
+                    return redirect(url_for('login_process'))
+                else:
+                    err_msg = message
+            except Exception as e:
+                err_msg = "Có lỗi xảy ra. Vui lòng thử lại sau!"
 
-        try:
-            success, message = dao.them_benhnhan(username, hoten, email, gioitinh, password,
-                                    ngaysinh=ngaysinh, diachi=diachi)
-            if success:
-                return redirect(url_for('login_process'))
-            else:
-                err_msg = message
-        except Exception as e:
-            err_msg = "Có lỗi xảy ra. Vui lòng thử lại sau!"
         return render_template('register.html', err_msg=err_msg)
 
     @app.route('/api/doctors')

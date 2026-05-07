@@ -3,6 +3,8 @@ from datetime import date, timedelta, time, datetime
 from app import dao
 from app.models import LichLamViec, NgayLamViec, PhanCa, BacSi, CaLam, User, UserRole, TrangThaiBacSi, NgayNghiBacSi, TrangThaiDuyet
 from test_base import test_session, test_app, test_client
+from unittest.mock import MagicMock, call
+
 
 # ==========================================
 # TEST: get_ngay_chua_sap_lich_gan_nhat
@@ -285,4 +287,85 @@ def test_tao_phan_ca_thanh_cong_trung_ngay_nghi_phep(test_session, setup_phan_ca
     assert pc_moi.id_CaLam == setup_phan_ca['ca_id']
     assert pc_moi.thuocNgay == setup_phan_ca['ngay']
     assert pc_moi.trangThai == TrangThaiBacSi.NghiPhep
+
+# ==========================================
+# TEST: tao_lich
+# ==========================================
+
+#******************************************
+def test_tao_lich_tao_lich_lam_viec_that_bai(mocker):
+    mocker.patch('app.dao.tao_lich_lam_viec', return_value=(False, "Lỗi tạo lịch làm việc"))
+    mock_tao_ngay = mocker.patch('app.dao.tao_ngay_lam_viec')
+    
+    success, msg = dao.tao_lich({}, date(2026, 5, 10), date(2026, 5, 12))
+    assert success is False
+    assert msg == "Lỗi tạo lịch làm việc"
+    mock_tao_ngay.assert_not_called()
+
+def test_tao_lich_tao_ngay_lam_viec_that_bai(mocker):
+    lich_moi_mock = MagicMock()
+    lich_moi_mock.id = 1
+    mocker.patch('app.dao.tao_lich_lam_viec', return_value=(True, lich_moi_mock))
+    mocker.patch('app.dao.tao_ngay_lam_viec', return_value=(False, "Lỗi tạo ngày làm việc"))
+    mock_tao_phan_ca = mocker.patch('app.dao.tao_phan_ca')
+
+    # 2026-05-10 là Chủ Nhật
+    lich_tuan = {'CN': {'ca1': [1, 2]}}
+    
+    success, msg = dao.tao_lich(lich_tuan, date(2026, 5, 10), date(2026, 5, 10))
+    assert success is False
+    assert msg == "Lỗi tạo ngày làm việc"
+    mock_tao_phan_ca.assert_not_called()
+
+def test_tao_lich_tao_phan_ca_that_bai(mocker):
+    lich_moi_mock = MagicMock()
+    lich_moi_mock.id = 1
+    mocker.patch('app.dao.tao_lich_lam_viec', return_value=(True, lich_moi_mock))
+    
+    ngay_moi_mock = MagicMock()
+    ngay_moi_mock.ngay = date(2026, 5, 10)
+    mocker.patch('app.dao.tao_ngay_lam_viec', return_value=(True, ngay_moi_mock))
+    
+    mocker.patch('app.dao.tao_phan_ca', return_value=(False, "Lỗi tạo phân ca"))
+    mock_commit = mocker.patch('app.dao.commit')
+
+    lich_tuan = {'CN': {'ca1': [1]}}
+    
+    success, msg = dao.tao_lich(lich_tuan, date(2026, 5, 10), date(2026, 5, 10))
+    assert success is False
+    assert msg == "Lỗi tạo phân ca"
+    mock_commit.assert_not_called()
+
+def test_tao_lich_thanh_cong(mocker):
+    lich_moi_mock = MagicMock()
+    lich_moi_mock.id = 1
+    mocker.patch('app.dao.tao_lich_lam_viec', return_value=(True, lich_moi_mock))
+    
+    ngay_moi_mock = MagicMock()
+    ngay_moi_mock.ngay = date(2026, 5, 10) # Chủ nhật
+    mock_tao_ngay = mocker.patch('app.dao.tao_ngay_lam_viec', return_value=(True, ngay_moi_mock))
+    
+    mock_tao_phan_ca = mocker.patch('app.dao.tao_phan_ca', return_value=(True, MagicMock()))
+    mock_commit = mocker.patch('app.dao.commit')
+
+    # 2026-05-10 là Chủ nhật, 2026-05-11 là Thứ 2
+    # Chỉ config 'CN', nên ngày thứ 2 vòng lặp inner sẽ bị skip
+    lich_tuan = {'CN': {'ca1': [1, 2], 'ca2': [3]}}
+    
+    success, msg = dao.tao_lich(lich_tuan, date(2026, 5, 10), date(2026, 5, 11))
+    
+    assert success is True
+    assert msg == "Tạo lịch thành công!"
+    mock_commit.assert_called_once()
+    mock_tao_ngay.assert_called_once_with(date(2026, 5, 10), 1)
+    
+    # Được gọi 3 lần cho ca1(2 bác sĩ) + ca2(1 bác sĩ) = 3
+    assert mock_tao_phan_ca.call_count == 3
+
+    expected_calls = [
+        call(1, 'ca1', date(2026, 5, 10)),
+        call(2, 'ca1', date(2026, 5, 10)),
+        call(3, 'ca2', date(2026, 5, 10))
+    ]
+    mock_tao_phan_ca.assert_has_calls(expected_calls, any_order=True)
 

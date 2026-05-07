@@ -44,7 +44,7 @@ def them_benhnhan(username, hoten, email, gioitinh, password, ngaysinh=None, dia
         )
         db.session.add(benhnhan)
         db.session.commit()
-        return True, "Đăng ký thành công!"
+        return True, "Thêm thành công!"
 
     except Exception as e:
         db.session.rollback()
