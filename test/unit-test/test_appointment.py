@@ -144,7 +144,7 @@ def test_dat_lich_that_bai_chua_dang_nhap(test_client, mocker):
     assert res.status_code == 401
     assert data['success'] is False
     assert data['loai_thong_bao'] == 'auth_required'
-    assert data['message'] == "Vui lòng đăng nhập để đặt lịch khám!"
+    assert data['message'] == "Vui lòng đăng nhập!"
 
 def test_dat_lich_that_bai_sai_role(test_client, mocker):
     class FakeUser:
@@ -158,9 +158,9 @@ def test_dat_lich_that_bai_sai_role(test_client, mocker):
     res = test_client.post('/api/dat-lich', json=payload)
     data = res.get_json()
 
-    assert res.status_code == 401
+    assert res.status_code == 403
     assert data['success'] is False
-    assert data['message'] == "Vui lòng đăng nhập để đặt lịch khám!"
+    assert data['message'] == "Bạn không có quyền truy cập!"
 
 def test_dat_lich_that_bai_thieu_tham_so(test_client, mocker):
     class FakeUser:
@@ -240,6 +240,12 @@ def test_api_ho_so_lich_kham(test_client, test_session, setup_db_for_booking, mo
     assert data[0]['ngay_kham_str'] == "15/05/2026"
 
 def test_lay_gio_kham_thanh_cong(test_client, test_session,mocker,setup_db_for_booking):
+    class FakeUser:
+        is_authenticated = True
+        id = setup_db_for_booking['patient_id']
+        role = UserRole.BENHNHAN
+
+    mocker.patch('flask_login.utils._get_user', return_value=FakeUser())
     bacsi_id = setup_db_for_booking['doctor_id']
     ngay_kham = setup_db_for_booking['ngay_kham']
 
@@ -250,7 +256,13 @@ def test_lay_gio_kham_thanh_cong(test_client, test_session,mocker,setup_db_for_b
     assert data['status'] == "hoat_dong"
     assert len(data['slots']) > 0
 
-def test_lay_gio_kham_thieu_tham_so(test_client):
+def test_lay_gio_kham_thieu_tham_so(test_client, mocker):
+    class FakeUser:
+        is_authenticated = True
+        id = 1
+        role = UserRole.BENHNHAN
+
+    mocker.patch('flask_login.utils._get_user', return_value=FakeUser())
     res = test_client.get('/api/gio-kham-bac-si?bacsi_id=1')
     data = res.get_json()
 

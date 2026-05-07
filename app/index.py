@@ -98,6 +98,7 @@ def register_routes(app):
         return jsonify([bs.to_dict() for bs in ds_bacsi_objects])
 
     @app.route('/dat-lich', methods=['GET'])
+    @role_required(UserRole.BENHNHAN)
     def dat_lich():
         return render_template('dat_lich.html')
     @app.route('/api/gio-kham-bac-si', methods=['GET'])
@@ -120,12 +121,6 @@ def register_routes(app):
     @role_required(UserRole.BENHNHAN)
     def api_dat_lich():
         try:
-            if not current_user.is_authenticated or current_user.role != UserRole.BENHNHAN:
-                return jsonify({
-                    "success": False,
-                    "loai_thong_bao": "auth_required",
-                    "message": "Vui lòng đăng nhập để đặt lịch khám!"
-                }), 401
             data = request.json
             bacsi_id = data.get('bacsi_id')
             ngay_kham = data.get('ngay_kham')
@@ -159,15 +154,13 @@ def register_routes(app):
             }), 500
 
     @app.route('/hoso')
-    @login_required
+    @role_required(UserRole.BENHNHAN)
     def ho_so():
-        if current_user.role != UserRole.BENHNHAN:
-            return redirect('/')
         benh_nhan = BenhNhan.query.filter_by(user_id=current_user.id).first()
         return render_template('ho_so.html', benh_nhan=benh_nhan)
 
     @app.route('/api/huy-lich/<int:phieu_id>', methods=['POST'])
-    @login_required
+    @role_required(UserRole.BENHNHAN)
     def huy_lich_api(phieu_id):
         success, message = dao.huy_lich_kham(phieu_id, current_user)
 
@@ -183,7 +176,7 @@ def register_routes(app):
             }), 400
 
     @app.route('/api/ho-so/lich-kham')
-    @login_required
+    @role_required(UserRole.BENHNHAN)
     def get_lich_kham_ho_so():
         try:
             ds_lich_kham = dao.get_lich_da_dat(user_id=current_user.id)
@@ -251,7 +244,6 @@ def register_routes(app):
 
     @app.route('/admin/tao-lich', methods=['GET'])
     @role_required(UserRole.ADMIN)
-    @login_required
     def admin_page_tao_lich():
         ds_calam = dao.get_list_shift()
 
