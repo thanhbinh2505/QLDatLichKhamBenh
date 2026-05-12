@@ -418,7 +418,7 @@ def test_bi_khoa_dat_lich_24h(test_session, setup_db_for_booking):
 def test_khung_gio_da_qua_trong_ngay(test_session, setup_db_for_booking, mocker):
     doctor_id = setup_db_for_booking['doctor_id']
     patient_id = setup_db_for_booking['patient_id']
-    mock_now = datetime(2026, 4, 30, 9, 0, 0)
+    mock_now = datetime(2026, 4, 30, 8, 1, 0)
 
     class MockDateTime(datetime):
         @classmethod

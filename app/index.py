@@ -1,14 +1,12 @@
-from flask import render_template, request, url_for, jsonify
-from sqlalchemy import try_cast
-from sqlalchemy.testing.exclusions import succeeds_if
-from werkzeug.utils import redirect
 from apscheduler.schedulers.background import BackgroundScheduler
+from flask import render_template, request, url_for, jsonify, redirect
 from datetime import datetime, timedelta, date
-from flask_login import login_user, logout_user, login_required, current_user
-from app import app, dao, login
-from app.models import UserRole, CaLam, LichLamViec, NgayLamViec, PhanCa, TrangThaiBacSi, BenhNhan
-from app.decorator import role_required, anonymous_required
+from flask_login import login_user, logout_user, current_user
 from marshmallow import ValidationError
+
+from app import app, dao, login
+from app.models import UserRole, BenhNhan
+from app.decorator import role_required, anonymous_required
 import app.schemas as schemas
 
 def register_routes(app):
@@ -22,7 +20,7 @@ def register_routes(app):
         error_msg = ""
         username_val = ""
 
-        if request.method == ('POST'):
+        if request.method == 'POST':
             username_or_email = request.form.get("username", "").strip()
             password = request.form.get("password", "").strip()
 
@@ -48,11 +46,13 @@ def register_routes(app):
         return render_template('login.html', error=error_msg, username_val=username_val)
 
     @app.route('/logout', methods=['GET', 'POST'])
+    @anonymous_required
     def logout_process():
         logout_user()
         return redirect('/')
 
     @app.route('/register', methods=["GET", "POST"])
+    @anonymous_required
     def register():
         err_msg = ""
         data = {}
