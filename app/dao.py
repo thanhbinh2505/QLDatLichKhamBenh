@@ -189,7 +189,7 @@ def luu_phieu_dat_lich(bacsi_id, ngay_kham_str, gio_kham_str, current_user_id):
         if ngay_kham < ngay_hien_tai:
             return False, "Không thể đặt lịch cho ngày trong quá khứ.", None
         gio_kham = datetime.combine(ngay_kham, start_time)
-        if gio_kham < datetime.now():
+        if gio_kham <= datetime.now():
             return False, "Khung giờ đã qua, không thể đặt khung giờ này.", None
 
         hop_le, msg, lich_truc = kiem_tra_lich_truc_bac_si(bacsi_id, ngay_kham)
