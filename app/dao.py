@@ -337,6 +337,25 @@ def get_lich_da_dat(user_id):
         })
     return results
 
+def get_benh_nhan_by_id(bn_id):
+    return BenhNhan.query.get(bn_id)
+def get_all_benh_nhan():
+    benh_nhans = BenhNhan.query.all()
+    ket_qua = []
+    for bn in benh_nhans:
+        # Tận dụng hàm count_huy_lich đã có trong dao.py để đếm số lần hủy tuần này
+        so_lan_huy = count_huy_lich(bn.id)
+
+        ket_qua.append({
+            'id': bn.id,
+            'ho_ten': bn.user.hoTen,
+            'email': bn.user.email,
+            'gioi_tinh': "Nam" if bn.user.gioiTinh else "Nữ",
+            'ngay_sinh': bn.ngaySinh.strftime('%d/%m/%Y') if bn.ngaySinh else "Chưa cập nhật",
+            'so_lan_huy_tuan': so_lan_huy
+        })
+    return ket_qua
+
 def cap_nhat_trang_thai_lich_kham():
     with app.app_context():
         phieu_cho = db.session.query(PhieuDatLich, KhungGio)\
