@@ -125,6 +125,8 @@ class LuuLichLamViecSchema(Schema):
         if 'ngayBatDau' in data and 'ngayKetThuc' in data:
             if data['ngayKetThuc'] < data['ngayBatDau']:
                 raise ValidationError("Ngày kết thúc không thể nhỏ hơn ngày bắt đầu.")
+            if (data['ngayKetThuc'] - data['ngayBatDau']).days < 7:
+                raise ValidationError("Tạo lịch làm việc phải ít nhất 7 ngày.")
 
 class TaoNghiPhepSchema(Schema):
     bacsi_id = fields.Int(required=True, error_messages={"required": "Vui lòng cung cấp ID bác sĩ."})
