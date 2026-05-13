@@ -1,7 +1,7 @@
 import pytest
 from datetime import date, timedelta, time, datetime
 from app import dao
-from app.models import LichLamViec, NgayLamViec, PhanCa, BacSi, CaLam, User, UserRole, TrangThaiBacSi, NgayNghiBacSi, TrangThaiDuyet
+from app.models import LichLamViec, NgayLamViec, PhanCa, BacSi, CaLam, User, UserRole, TrangThaiBacSi, NgayNghiBacSi, TrangThaiDuyet, BenhNhan
 from test_base import test_session, test_app, test_client
 from unittest.mock import MagicMock, call
 
@@ -292,7 +292,6 @@ def test_tao_phan_ca_thanh_cong_trung_ngay_nghi_phep(test_session, setup_phan_ca
 # TEST: tao_lich
 # ==========================================
 
-#******************************************
 def test_tao_lich_tao_lich_lam_viec_that_bai(mocker):
     mocker.patch('app.dao.tao_lich_lam_viec', return_value=(False, "Lỗi tạo lịch làm việc"))
     mock_tao_ngay = mocker.patch('app.dao.tao_ngay_lam_viec')
@@ -309,10 +308,9 @@ def test_tao_lich_tao_ngay_lam_viec_that_bai(mocker):
     mocker.patch('app.dao.tao_ngay_lam_viec', return_value=(False, "Lỗi tạo ngày làm việc"))
     mock_tao_phan_ca = mocker.patch('app.dao.tao_phan_ca')
 
-    # 2026-05-10 là Chủ Nhật
     lich_tuan = {'CN': {'ca1': [1, 2]}}
     
-    success, msg = dao.tao_lich(lich_tuan, date(2026, 5, 10), date(2026, 5, 10))
+    success, msg = dao.tao_lich(lich_tuan, date.today(), date.today() + timedelta(days=7))
     assert success is False
     assert msg == "Lỗi tạo ngày làm việc"
     mock_tao_phan_ca.assert_not_called()
@@ -323,7 +321,7 @@ def test_tao_lich_tao_phan_ca_that_bai(mocker):
     mocker.patch('app.dao.tao_lich_lam_viec', return_value=(True, lich_moi_mock))
     
     ngay_moi_mock = MagicMock()
-    ngay_moi_mock.ngay = date(2026, 5, 10)
+    ngay_moi_mock.ngay = date.today()
     mocker.patch('app.dao.tao_ngay_lam_viec', return_value=(True, ngay_moi_mock))
     
     mocker.patch('app.dao.tao_phan_ca', return_value=(False, "Lỗi tạo phân ca"))
@@ -331,7 +329,7 @@ def test_tao_lich_tao_phan_ca_that_bai(mocker):
 
     lich_tuan = {'CN': {'ca1': [1]}}
     
-    success, msg = dao.tao_lich(lich_tuan, date(2026, 5, 10), date(2026, 5, 10))
+    success, msg = dao.tao_lich(lich_tuan, date.today(), date.today() + timedelta(days=7))
     assert success is False
     assert msg == "Lỗi tạo phân ca"
     mock_commit.assert_not_called()
@@ -348,8 +346,6 @@ def test_tao_lich_thanh_cong(mocker):
     mock_tao_phan_ca = mocker.patch('app.dao.tao_phan_ca', return_value=(True, MagicMock()))
     mock_commit = mocker.patch('app.dao.commit')
 
-    # 2026-05-10 là Chủ nhật, 2026-05-11 là Thứ 2
-    # Chỉ config 'CN', nên ngày thứ 2 vòng lặp inner sẽ bị skip
     lich_tuan = {'CN': {'ca1': [1, 2], 'ca2': [3]}}
     
     success, msg = dao.tao_lich(lich_tuan, date(2026, 5, 10), date(2026, 5, 11))
@@ -359,7 +355,6 @@ def test_tao_lich_thanh_cong(mocker):
     mock_commit.assert_called_once()
     mock_tao_ngay.assert_called_once_with(date(2026, 5, 10), 1)
     
-    # Được gọi 3 lần cho ca1(2 bác sĩ) + ca2(1 bác sĩ) = 3
     assert mock_tao_phan_ca.call_count == 3
 
     expected_calls = [
@@ -369,3 +364,355 @@ def test_tao_lich_thanh_cong(mocker):
     ]
     mock_tao_phan_ca.assert_has_calls(expected_calls, any_order=True)
 
+# ==========================================
+# TEST: LuuLichLamViecSchema (marshmallow)
+# ==========================================
+import json
+
+@pytest.fixture
+def admin_login(test_app, test_client, mocker):
+    class FakeAdmin:
+        is_authenticated = True
+        id = 1
+        role = UserRole.ADMIN
+
+    mocker.patch('flask_login.utils._get_user', return_value=FakeAdmin())
+    return test_client
+
+
+def _valid_payload(**overrides):
+    today = date.today()
+    start = today + timedelta(days=1)
+    end = start + timedelta(days=7)
+    payload = {
+        'lichTuan': {'T2': {1: [1]}},
+        'ngayBatDau': start.strftime('%Y-%m-%d'),
+        'ngayKetThuc': end.strftime('%Y-%m-%d'),
+    }
+    payload.update(overrides)
+    return payload
+
+
+# ---------- lichTuan ----------
+@pytest.mark.parametrize('lichTuan, err_msg', [
+    (None, 'Dữ liệu không hợp lệ!'),
+    ('not_a_dict', 'Dữ liệu không hợp lệ!'),
+    ({'INVALID': {1: [1]}}, 'Dữ liệu không hợp lệ!'),
+    ({'T2': 'not_a_dict'}, 'Dữ liệu không hợp lệ!'),
+    ({'T2': {'abc': [1]}}, 'Dữ liệu không hợp lệ!'),
+    ({'T2': {1: 'not_a_list'}}, 'Dữ liệu không hợp lệ!'),
+    ({'T2': {1: ['abc']}}, 'Dữ liệu không hợp lệ!'),
+])
+def test_luu_lich_lichTuan_invalid(admin_login, lichTuan, err_msg, mocker):
+    mock_tao_lich = mocker.patch('app.dao.tao_lich')
+    payload = _valid_payload()
+    if lichTuan is None:
+        del payload['lichTuan']
+    else:
+        payload['lichTuan'] = lichTuan
+
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 400
+    data = res.get_json()
+    assert data['message'] == err_msg
+    mock_tao_lich.assert_not_called()
+
+
+yesterday = date.today() - timedelta(days=1)
+
+@pytest.mark.parametrize('ngayBatDau, err_msg', [
+    (None, 'Vui lòng cung cấp ngày bắt đầu.'),
+    ('invalid-date', 'Ngày bắt đầu không hợp lệ!'),
+    (yesterday.strftime('%Y-%m-%d'), 'Không thể tạo lịch làm việc trong quá khứ.'),
+])
+def test_luu_lich_ngayBatDau_invalid(admin_login, ngayBatDau, err_msg, mocker):
+    mock_tao_lich = mocker.patch('app.dao.tao_lich')
+    payload = _valid_payload()
+    if ngayBatDau is None:
+        del payload['ngayBatDau']
+    else:
+        payload['ngayBatDau'] = ngayBatDau
+
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 400
+    data = res.get_json()
+    assert data['message'] == err_msg
+    mock_tao_lich.assert_not_called()
+
+
+@pytest.mark.parametrize('ngayKetThuc, err_msg', [
+    (None, 'Vui lòng cung cấp ngày kết thúc.'),
+    ('invalid-date', 'Ngày kết thúc không hợp lệ!'),
+])
+def test_luu_lich_ngayKetThuc_invalid(admin_login, ngayKetThuc, err_msg, mocker):
+    mock_tao_lich = mocker.patch('app.dao.tao_lich')
+    payload = _valid_payload()
+    if ngayKetThuc is None:
+        del payload['ngayKetThuc']
+    else:
+        payload['ngayKetThuc'] = ngayKetThuc
+
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 400
+    data = res.get_json()
+    assert data['message'] == err_msg
+    mock_tao_lich.assert_not_called()
+
+
+def test_luu_lich_ngayKetThuc_truoc_ngayBatDau(admin_login, mocker):
+    mock_tao_lich = mocker.patch('app.dao.tao_lich')
+    start = date.today() + timedelta(days=10)
+    end = date.today() + timedelta(days=2)
+    payload = _valid_payload(
+        ngayBatDau=start.strftime('%Y-%m-%d'),
+        ngayKetThuc=end.strftime('%Y-%m-%d'),
+    )
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 400
+    data = res.get_json()
+    assert data['message'] == 'Ngày kết thúc không thể nhỏ hơn ngày bắt đầu.'
+    mock_tao_lich.assert_not_called()
+
+
+def test_luu_lich_khoang_cach_duoi_7_ngay(admin_login, mocker):
+    mock_tao_lich = mocker.patch('app.dao.tao_lich')
+    start = date.today() + timedelta(days=1)
+    end = start + timedelta(days=5)
+    payload = _valid_payload(
+        ngayBatDau=start.strftime('%Y-%m-%d'),
+        ngayKetThuc=end.strftime('%Y-%m-%d'),
+    )
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 400
+    data = res.get_json()
+    assert data['message'] == 'Tạo lịch làm việc phải ít nhất 7 ngày.'
+    mock_tao_lich.assert_not_called()
+
+
+def test_luu_lich_valid_payload(admin_login, mocker):
+    mock_tao_lich = mocker.patch('app.dao.tao_lich', return_value=(True, 'Tạo lịch thành công!'))
+    payload = _valid_payload()
+
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data['message'] == 'Tạo lịch thành công!'
+    mock_tao_lich.assert_called_once()
+
+# ==========================================
+# INTEGRATION TEST: API lưu lịch làm việc
+# ==========================================
+
+@pytest.fixture
+def setup_bacsi_calam(test_session):
+    u1 = User(username='bs_intg1', hoTen='BS Intg 1', email='bs_intg1@test.com',
+              gioiTinh=True, role=UserRole.BACSI)
+    u1.set_password('123456')
+    test_session.add(u1)
+    test_session.flush()
+    bs1 = BacSi(user_id=u1.id, chuyenKhoa='Nhi Khoa')
+    test_session.add(bs1)
+
+    u2 = User(username='bs_intg2', hoTen='BS Intg 2', email='bs_intg2@test.com',
+              gioiTinh=False, role=UserRole.BACSI)
+    u2.set_password('123456')
+    test_session.add(u2)
+    test_session.flush()
+    bs2 = BacSi(user_id=u2.id, chuyenKhoa='Tim Mạch')
+    test_session.add(bs2)
+
+    ca1 = CaLam(tenCa='Ca Sáng', gioBatDau=time(8, 0), gioKetThuc=time(12, 0))
+    ca2 = CaLam(tenCa='Ca Chiều', gioBatDau=time(13, 0), gioKetThuc=time(17, 0))
+    test_session.add_all([ca1, ca2])
+    test_session.commit()
+
+    return {'bs1': bs1, 'bs2': bs2, 'ca1': ca1, 'ca2': ca2}
+
+
+def test_intg_luu_lich_chua_dang_nhap(test_app, test_session):
+    client = test_app.test_client()
+    payload = _valid_payload()
+    res = client.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 401
+
+
+def test_intg_luu_lich_khong_phai_admin(test_client, mocker):
+    class FakeUser:
+        is_authenticated = True
+        id = 1
+        role = UserRole.BENHNHAN
+
+    mocker.patch('flask_login.utils._get_user', return_value=FakeUser())
+
+    payload = _valid_payload()
+    res = test_client.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 403
+
+
+def test_intg_luu_lich_validation_fail(admin_login):
+    payload = _valid_payload()
+    del payload['lichTuan']
+
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 400
+    data = res.get_json()
+    assert data['message'] == 'Dữ liệu không hợp lệ!'
+
+
+def test_intg_luu_lich_trung_lich(admin_login, test_session, setup_bacsi_calam):
+    start = date.today() + timedelta(days=1)
+    end = start + timedelta(days=7)
+
+    lich_cu = LichLamViec(ngayBatDau=start, ngayKetThuc=end)
+    test_session.add(lich_cu)
+    test_session.commit()
+
+    payload = {
+        'lichTuan': {'T2': {setup_bacsi_calam['ca1'].id: [setup_bacsi_calam['bs1'].id]}},
+        'ngayBatDau': start.strftime('%Y-%m-%d'),
+        'ngayKetThuc': end.strftime('%Y-%m-%d'),
+    }
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 400
+    data = res.get_json()
+    assert 'Đã tồn tại lịch' in data['message']
+
+
+def test_intg_luu_lich_thanh_cong(admin_login, test_session, setup_bacsi_calam):
+    today = date.today()
+    days_until_monday = (7 - today.weekday()) % 7
+    if days_until_monday == 0:
+        days_until_monday = 7
+    next_monday = today + timedelta(days=days_until_monday)
+    end_date = next_monday + timedelta(days=13)
+
+    ca1_id = setup_bacsi_calam['ca1'].id
+    ca2_id = setup_bacsi_calam['ca2'].id
+    bs1_id = setup_bacsi_calam['bs1'].id
+    bs2_id = setup_bacsi_calam['bs2'].id
+
+    payload = {
+        'lichTuan': {
+            'T2': {ca1_id: [bs1_id, bs2_id]},
+            'T4': {ca2_id: [bs1_id]},
+        },
+        'ngayBatDau': next_monday.strftime('%Y-%m-%d'),
+        'ngayKetThuc': end_date.strftime('%Y-%m-%d'),
+    }
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data['message'] == 'Tạo lịch thành công!'
+
+    lich = LichLamViec.query.filter_by(ngayBatDau=next_monday, ngayKetThuc=end_date).first()
+    assert lich is not None
+
+    t2_1 = next_monday
+    t2_2 = next_monday + timedelta(days=7)
+
+    for t2 in [t2_1, t2_2]:
+        nlv = NgayLamViec.query.filter_by(ngay=t2).first()
+        assert nlv is not None
+        assert nlv.id_LichLamViec == lich.id
+        pc1 = PhanCa.query.filter_by(id_BacSi=bs1_id, thuocNgay=t2, id_CaLam=ca1_id).first()
+        pc2 = PhanCa.query.filter_by(id_BacSi=bs2_id, thuocNgay=t2, id_CaLam=ca1_id).first()
+        assert pc1 is not None
+        assert pc1.trangThai == TrangThaiBacSi.HoatDong
+        assert pc2 is not None
+
+    t4_1 = next_monday + timedelta(days=2)
+    t4_2 = next_monday + timedelta(days=9)
+
+    for t4 in [t4_1, t4_2]:
+        nlv = NgayLamViec.query.filter_by(ngay=t4).first()
+        assert nlv is not None
+        pc = PhanCa.query.filter_by(id_BacSi=bs1_id, thuocNgay=t4, id_CaLam=ca2_id).first()
+        assert pc is not None
+
+    total_pc = PhanCa.query.count()
+    assert total_pc == 6
+
+
+def test_intg_luu_lich_ca_lam_khong_ton_tai(admin_login, test_session, setup_bacsi_calam):
+    start = date.today() + timedelta(days=1)
+    end = start + timedelta(days=7)
+    bs1_id = setup_bacsi_calam['bs1'].id
+
+    payload = {
+        'lichTuan': {'T2': {9999: [bs1_id]}},
+        'ngayBatDau': start.strftime('%Y-%m-%d'),
+        'ngayKetThuc': end.strftime('%Y-%m-%d'),
+    }
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 400
+    data = res.get_json()
+    assert 'không tồn tại' in data['message'].lower()
+
+
+def test_intg_luu_lich_bacsi_khong_ton_tai(admin_login, test_session, setup_bacsi_calam):
+    start = date.today() + timedelta(days=1)
+    end = start + timedelta(days=7)
+
+    ca1_id = setup_bacsi_calam['ca1'].id
+
+    payload = {
+        'lichTuan': {'T2': {ca1_id: [9999]}},
+        'ngayBatDau': start.strftime('%Y-%m-%d'),
+        'ngayKetThuc': end.strftime('%Y-%m-%d'),
+    }
+    res = admin_login.post(
+        '/api/admin/luu-lich-lam-viec',
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert res.status_code == 400
+    data = res.get_json()
+    assert 'không tồn tại' in data['message'].lower()

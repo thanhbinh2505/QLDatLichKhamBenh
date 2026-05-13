@@ -280,8 +280,15 @@ def register_routes(app):
         try:
             data = schemas.LuuLichLamViecSchema().load(request.json)
         except ValidationError as err:
-            first_error_field = list(err.messages.keys())[0]
-            err_msg = err.messages[first_error_field][0]
+            def _extract_first_error(messages):
+                if isinstance(messages, list):
+                    return messages[0] if messages else "Dữ liệu không hợp lệ!"
+                if isinstance(messages, dict):
+                    first_key = next(iter(messages))
+                    return _extract_first_error(messages[first_key])
+                return str(messages)
+
+            err_msg = _extract_first_error(err.messages)
             return jsonify({
                 "message": err_msg
             }), 400

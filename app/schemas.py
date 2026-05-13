@@ -89,7 +89,7 @@ class LuuLichLamViecSchema(Schema):
     lichTuan = fields.Dict(
         keys=fields.Str(validate=validate.OneOf(
             ["T2", "T3", "T4", "T5", "T6", "T7", "CN"], 
-            error="Ngày trong tuần không hợp lệ (phải từ T2 đến CN)."
+            error="Dữ liệu không hợp lệ!"
         )),
         values=fields.Dict(
             keys=fields.Int(error_messages={"invalid": "Dữ liệu không hợp lệ!"}),
@@ -100,7 +100,7 @@ class LuuLichLamViecSchema(Schema):
         ),
         required=True,
         error_messages={
-            "required": "Vui lòng cung cấp dữ liệu lịch tuần.",
+            "required": "Dữ liệu không hợp lệ!",
             "invalid": "Dữ liệu không hợp lệ!"
             }
     )
