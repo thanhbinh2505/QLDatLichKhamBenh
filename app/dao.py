@@ -1,7 +1,7 @@
 from datetime import datetime, time, date, timedelta
 from http.client import parse_headers
-
 from sqlalchemy import func, and_, or_, false
+from sqlalchemy.exc import IntegrityError
 
 from app import app, db
 from app.models import (User, BenhNhan, BacSi, PhieuDatLich,
@@ -61,19 +61,12 @@ def get_list_doctor():
     return BacSi.query.join(User, BacSi.user_id == User.id).all()
 
 def lay_bac_si_co_lich_lam_viec(ngay):
-    """
-    Lấy danh sách các bác sĩ có lịch làm việc (PhanCa) trong một ngày cụ thể
-    và trạng thái là HoatDong.
-    """
     bac_si_co_lich = db.session.query(BacSi).join(PhanCa, BacSi.id == PhanCa.id_BacSi)\
         .filter(PhanCa.thuocNgay == ngay, PhanCa.trangThai == TrangThaiBacSi.HoatDong)\
         .all()
     return bac_si_co_lich
 
 def lay_bac_si_nghi_phep(ngay):
-    """
-    Lấy danh sách các bác sĩ có ngày nghỉ phép đã được duyệt bao gồm ngày được truyền vào.
-    """
     bac_si_nghi_phep = db.session.query(BacSi).join(NgayNghiBacSi, BacSi.id == NgayNghiBacSi.bacsi_id)\
         .filter(
             NgayNghiBacSi.ngayBatDau <= ngay,
@@ -136,7 +129,6 @@ def kiem_tra_lich_truc_bac_si(bac_si_id, ngay_kham):
 def get_khung_gio_bac_si(bac_si_id, ngay_kham_str):
 
     ngay_kham = datetime.strptime(ngay_kham_str, '%Y-%m-%d').date()
-    lich_truc = PhanCa.query.filter_by(id_BacSi=bac_si_id, thuocNgay=ngay_kham).all()
     hop_le, msg, lich_truc = kiem_tra_lich_truc_bac_si(bac_si_id, ngay_kham)
     if not hop_le:
         return {"status": "nghi_phep", "message": msg}
@@ -192,6 +184,8 @@ def luu_phieu_dat_lich(bacsi_id, ngay_kham_str, gio_kham_str, current_user_id):
         if gio_kham <= datetime.now():
             return False, "Khung giờ đã qua, không thể đặt khung giờ này.", None
 
+        db.session.query(BacSi).filter(BacSi.id == bacsi_id).with_for_update().first()
+
         hop_le, msg, lich_truc = kiem_tra_lich_truc_bac_si(bacsi_id, ngay_kham)
         if not hop_le:
             return False, msg, None
@@ -202,17 +196,13 @@ def luu_phieu_dat_lich(bacsi_id, ngay_kham_str, gio_kham_str, current_user_id):
             if datetime.now()<benhnhan.thoiGianMoKhoa:
                 thoi_gian_str = benhnhan.thoiGianMoKhoa.strftime('%H:%M ngày %d/%m/%Y')
                 return False, f"Tài khoản đang bị hạn chế đặt lịch đến {thoi_gian_str} do hủy lịch quá 3 lần/tuần.", None
-
-
         so_ca_da_dat = PhieuDatLich.query.filter(
             PhieuDatLich.benhnhan_id == benhnhan.id,
             PhieuDatLich.ngayKham == ngay_kham,
             PhieuDatLich.status != TrangThaiLichHen.Cancelled
         ).count()
-
         if so_ca_da_dat >= 2:
             return False, f"Chỉ đặt tối đa 2ca/ngày.Bạn đã đạt giới hạn: {ngay_kham.strftime('%d/%m/%Y')}.", None
-
         khung_gio = KhungGio.query.filter_by(startTime=start_time, endTime=end_time).first()
         if not khung_gio:
             return False, "Khung giờ khám không tồn tại hoặc nằm ngoài giờ làm việc.", None
@@ -243,8 +233,13 @@ def luu_phieu_dat_lich(bacsi_id, ngay_kham_str, gio_kham_str, current_user_id):
             status=TrangThaiLichHen.Scheduled
         )
         db.session.add(phieu_moi)
-        commit()
-
+        # ---------------------------------------------------------
+        try:
+            commit()
+        except IntegrityError:
+            rollback()
+            return False, "Khung giờ này đã có người đặt. Vui lòng chọn giờ khác!", None
+        # ---------------------------------------------------------
         bacsi = BacSi.query.get(bacsi_id)
         ten_bs = bacsi.user.hoTen if (bacsi and bacsi.user) else "Bác sĩ"
 
@@ -253,9 +248,7 @@ def luu_phieu_dat_lich(bacsi_id, ngay_kham_str, gio_kham_str, current_user_id):
             "date": ngay_kham.strftime('%d/%m/%Y'),
             "time": gio_kham_str
         }
-
         return True, "Bạn đã đặt lịch khám thành công.", thong_tin_dat_lich
-
     except Exception as e:
         db.session.rollback()
         return False, "Hệ thống đang gặp sự cố khi lưu lịch hẹn. Vui lòng thử lại!", None
@@ -264,11 +257,15 @@ def count_huy_lich(benhnhan_id):
     today = datetime.now().date()
     start_week = datetime.combine(today - timedelta(days=today.weekday()), datetime.min.time())
     end_week = datetime.combine(start_week + timedelta(days=6), datetime.max.time())
+    benh_nhan = BenhNhan.query.get(benhnhan_id)
+    if not benh_nhan:
+        return 0
     return PhieuDatLich.query.filter(
         PhieuDatLich.benhnhan_id == benhnhan_id,
         PhieuDatLich.status == TrangThaiLichHen.Cancelled,
         PhieuDatLich.cancelTime >=start_week,
-        PhieuDatLich.cancelTime <=end_week
+        PhieuDatLich.cancelTime <=end_week,
+        PhieuDatLich.user_huy_id == benh_nhan.user_id
     ).count()
 
 def huy_lich_kham(phieu_id, current_user):
@@ -281,14 +278,29 @@ def huy_lich_kham(phieu_id, current_user):
         return False, "Lịch khám đã hoàn thành, không thể hủy."
     if phieu.status == TrangThaiLichHen.Cancelled:
         return False, "Lịch khám đã được hủy trước đó."
-
     ngay_gio_kham = datetime.combine(phieu.ngayKham, phieu.khung_gio.startTime)
     time_con_lai = ngay_gio_kham - datetime.now()
+    if current_user.role != UserRole.ADMIN:
+        if time_con_lai<=timedelta(seconds=0):
+            return False,"Đang trong giờ khám. Không thể hủy lịch khám."
+        if time_con_lai<=timedelta(hours=1):
+            return False, "Không thể hủy lịch vì còn dưới 1 giờ trước giờ khám."
+    date_time_start = datetime.combine(phieu.ngayKham, phieu.khung_gio.startTime)
+    date_time_end = datetime.combine(phieu.ngayKham, phieu.khung_gio.endTime)
+    date_time_now = datetime.now()
+    if date_time_now > date_time_end:
+        try:
+            phieu.status = TrangThaiLichHen.Completed
+            commit()
+        except Exception:
+            rollback()
+        return False, "Lịch khám đã hoàn thành, không thể hủy"
 
-    if time_con_lai<=timedelta(seconds=0):
+    if date_time_start <= date_time_now <= date_time_end:
         return False,"Đang trong giờ khám. Không thể hủy lịch khám."
-    if time_con_lai<=timedelta(hours=1):
+    if (date_time_start-date_time_now) < timedelta(minutes=60):
         return False, "Không thể hủy lịch vì còn dưới 1 giờ trước giờ khám."
+
 
     try:
         phieu.status = TrangThaiLichHen.Cancelled
@@ -320,21 +332,26 @@ def get_lich_da_dat(user_id):
         .all()
 
     results = []
+    need_commit = False
     for phieu, bacsi, user_bs, khung_gio in ds_phieu:
-        ngay_kham = phieu.ngayKham
-        if isinstance(ngay_kham, str):
-            ngay_kham = datetime.strptime(ngay_kham, '%Y-%m-%d').date()
+        ngay_gio_ket_thuc = datetime.combine(phieu.ngayKham, khung_gio.endTime)
 
-        ngay_gio = datetime.combine(ngay_kham, khung_gio.startTime).isoformat()
+        if phieu.status == TrangThaiLichHen.Scheduled and datetime.now() > ngay_gio_ket_thuc:
+            phieu.status = TrangThaiLichHen.Completed
+            need_commit = True
+
+        ngay_gio_kham = datetime.combine(phieu.ngayKham, khung_gio.startTime).isoformat()
 
         results.append({
             "id": phieu.id,
             "ten_BS": user_bs.hoTen,
-            "ngay_kham_str": ngay_kham.strftime('%d/%m/%Y'),
+            "ngay_kham_str": phieu.ngayKham.strftime('%d/%m/%Y'),
             "gio_kham_str": f"{khung_gio.startTime.strftime('%H:%M')} - {khung_gio.endTime.strftime('%H:%M')}",
             "status": phieu.status.name,
-            "ngay_gio_kham": ngay_gio,
+            "ngay_gio_kham": ngay_gio_kham,
         })
+    if need_commit:
+        db.session.commit()
     return results
 
 def get_benh_nhan_by_id(bn_id):
@@ -343,7 +360,6 @@ def get_all_benh_nhan():
     benh_nhans = BenhNhan.query.all()
     ket_qua = []
     for bn in benh_nhans:
-        # Tận dụng hàm count_huy_lich đã có trong dao.py để đếm số lần hủy tuần này
         so_lan_huy = count_huy_lich(bn.id)
 
         ket_qua.append({
@@ -375,11 +391,6 @@ def cap_nhat_trang_thai_lich_kham():
                 print(f"Lỗi cập nhật trạng thái lịch khám: {e}")
 
 def get_ngay_chua_sap_lich_gan_nhat():
-    """
-    Tìm ngày gần nhất chưa được phân lịch làm việc.
-    Trả về object datetime.date
-    """
-
     max_ngay_ket_thuc = db.session.query(func.max(LichLamViec.ngayKetThuc)).scalar()
 
     today = date.today()
@@ -409,18 +420,6 @@ def lay_danh_sach_phan_ca(ngay):
     ).all()
 
 def lay_lich_tuan(ngay_bat_dau, ngay_ket_thuc):
-    """
-    lay_lich_tuan(date(2026, 5, 4), date(2026, 5, 10))
-    
-    Returns:
-        dict:
-            {
-                "T2": {"1": [1, 2], "2": [1]},   # key = id CaLam (string)
-                "T3": { ... },
-                ...           # chỉ có các ngày có phân ca
-            }
-    """
-
     ds_ngay_lam_viec = lay_ngay_lam_viec(ngay_bat_dau, ngay_ket_thuc)
 
     day_map = {0: 'T2', 1: 'T3', 2: 'T4', 3: 'T5', 4: 'T6', 5: 'T7', 6: 'CN'}
@@ -449,7 +448,7 @@ def tao_lich_lam_viec(ngay_bat_dau, ngay_ket_thuc):
     ).first()
 
     if lich_da_tao:
-        return False, f"Đã tồn tại lịch từ {lich_da_tao.ngayBatDau.strftime('%d/%m/%Y')} đến {lich_da_tao.ngayKetThuc.strftime('%d/%m/%Y')})."
+        return False, f"Đã tồn tại lịch từ {lich_da_tao.ngayBatDau.strftime('%d/%m/%Y')} đến {lich_da_tao.ngayKetThuc.strftime('%d/%m/%Y')}."
 
     try:
         lich_moi = LichLamViec(ngayBatDau=ngay_bat_dau, ngayKetThuc=ngay_ket_thuc)
@@ -486,13 +485,13 @@ def tao_ngay_lam_viec(ngay, id_lichlamviec):
 
 def tao_phan_ca(id_bacsi, id_calam, thuoc_ngay):
     try:
-        if not BacSi.query.get(id_bacsi):
+        if not db.session.get(BacSi, id_bacsi):
             return False, "ID bác sĩ không tồn tại!"
 
-        if not CaLam.query.get(id_calam):
+        if not db.session.get(CaLam, id_calam):
             return False, "ID ca làm không tồn tại!"
 
-        if not NgayLamViec.query.get(thuoc_ngay):
+        if not db.session.get(NgayLamViec, thuoc_ngay):
             return False, "Ngày làm việc không tồn tại!"
 
         pc_ton_tai = PhanCa.query.filter(

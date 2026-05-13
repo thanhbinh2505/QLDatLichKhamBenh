@@ -7,7 +7,7 @@ url = "http://127.0.0.1:5000/api/dat-lich"
 
 payload = {
     "bacsi_id": 1,
-    "ngay_kham": "2026-06-01",
+    "ngay_kham": "2026-05-13",
     "gio_kham": "08:00 - 08:30"
 }
 

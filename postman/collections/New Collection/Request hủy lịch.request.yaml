@@ -1,0 +1,5 @@
+$kind: http-request
+name: Request hủy lịch
+url: http://127.0.0.1:5000/api/huy-lich/2
+method: POST
+order: 4480559819443240

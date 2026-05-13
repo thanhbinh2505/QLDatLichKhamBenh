@@ -1,10 +1,7 @@
-// Khởi tạo icon khi tải trang
+
 lucide.createIcons();
 fetchLichKham();
 
-/**
- * Hàm hiển thị Modal thông báo kết quả (Lấy data từ return của DAO)
- */
 function showStatusModal(message, isSuccess = true) {
     const modal = document.getElementById('statusModal');
     const header = document.getElementById('statusHeader');
@@ -26,66 +23,72 @@ function showStatusModal(message, isSuccess = true) {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
-    // Cập nhật lại icon Lucide trong modal
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-/**
- * Hàm đóng Modal
- */
 function closeStatusModal() {
     const modal = document.getElementById('statusModal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 }
 
-/**
- * Hàm xử lý khi nhấn nút Hủy trên giao diện
- */
-async function handleHuyClick(id, diffInHours) {
-    // 1. Kiểm tra ràng buộc thời gian ngay tại Client
+let currentCancelId = null;
+
+function handleHuyClick(id, diffInHours) {
     if (diffInHours < 1) {
         showStatusModal("Không thể hủy lịch khám vì thời gian còn lại dưới 1 giờ!", false);
         return;
     }
-
-    // 2. Gọi API thực hiện hủy (Lấy kết quả từ DAO)
-    try {
-        const response = await fetch(`/api/huy-lich/${id}`, { method: 'POST' });
-        const result = await response.json();
-
-        // Hiển thị thông báo (Thành công/Thất bại/Cảnh báo 24h) từ DAO trả về
-        showStatusModal(result.message, result.success);
-
-        if (result.success) {
-            fetchLichKham(); // Tải lại danh sách để cập nhật giao diện
-        }
-    } catch (error) {
-        showStatusModal("Lỗi kết nối máy chủ, vui lòng thử lại!", false);
-    }
+    currentCancelId = id;
+    openCancelModal();
 }
 
-/**
- * Hàm vẽ giao diện Card lịch khám
- */
+function openCancelModal() {
+    const modal = document.getElementById('cancelModal');
+    modal.classList.remove('hidden');
+}
+
+function closeCancelModal() {
+    const modal = document.getElementById('cancelModal');
+    modal.classList.add('hidden');
+}
+document.getElementById('btnConfirmCancel').addEventListener('click', async function() {
+    if (!currentCancelId) return;
+
+    this.innerText = 'Đang xử lý...';
+    this.disabled = true;
+
+    try {
+        const response = await fetch(`/api/huy-lich/${currentCancelId}`, { method: 'POST' });
+        const result = await response.json();
+        closeCancelModal();
+        showStatusModal(result.message, result.success);
+        if (result.success) {
+            fetchLichKham();
+        }
+    } catch (error) {
+        closeCancelModal();
+        showStatusModal("Lỗi kết nối máy chủ, vui lòng thử lại!", false);
+    } finally {
+        this.innerText = 'Xác nhận hủy';
+        this.disabled = false;
+    }
+});
 function renderPhieuKham(phieu) {
     const now = new Date();
     const thoiGianKham = new Date(phieu.ngay_gio_kham);
     const diffInHours = (thoiGianKham - now) / (1000 * 60 * 60);
 
-    // Xác định trạng thái để vô hiệu hóa nút
     const isLocked = phieu.status === 'Completed' || phieu.status === 'Cancelled';
 
     let statusClass = 'bg-blue-100 text-blue-700';
     if (phieu.status === 'Completed') statusClass = 'bg-green-100 text-green-700';
     if (phieu.status === 'Cancelled') statusClass = 'bg-red-100 text-red-700';
 
-    // CSS cho nút bấm
     const btnClass = isLocked
         ? "text-slate-400 cursor-not-allowed border-slate-200"
         : "text-red-500 hover:bg-red-50 border-red-100 hover:border-red-200";
 
-    // QUAN TRỌNG: Dùng thẻ <button> và thuộc tính disabled
     return `
         <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-all">
             <div class="space-y-2">

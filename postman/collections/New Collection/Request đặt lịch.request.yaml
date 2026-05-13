@@ -1,5 +1,44 @@
 $kind: http-request
 name: Request đặt lịch
-url: ""
-method: GET
+url: http://127.0.0.1:5000/api/dat-lich
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \    \"bacsi_id\": 1,\r
+
+    \    \"ngay_kham\": \"2026-05-13\",\r
+
+    \    \"gio_kham\": \"10:30 - 11:00\" \r
+
+    }"
+scripts:
+  - type: afterResponse
+    code: "var jsonData = pm.response.json();\r
+
+      \r
+
+      // 1. Xuất ra console để tự tin là Server đã bị lùi về tháng 4\r
+
+      console.log(\"⏰ Giờ Server đang bị kẹt tại:\", jsonData.thoi_gian_bi_hack);\r
+
+      \r
+
+      // 2. Kiểm tra xem Server có cho phép đặt lịch cách 3 ngày không\r
+
+      pm.test(\"Trạng thái HTTP là 200 (Cho phép đặt lịch 30 ngày)\", function () {\r
+
+      \    pm.response.to.have.status(200);\r
+
+      });\r
+
+      \r
+
+      pm.test(\"Dev trả về success = true\", function () {\r
+
+      \    pm.expect(jsonData.success).to.eql(false);\r
+
+      });"
+    language: text/javascript
 order: 3655813823346163
