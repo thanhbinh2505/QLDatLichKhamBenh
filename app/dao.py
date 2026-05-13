@@ -449,7 +449,7 @@ def tao_lich_lam_viec(ngay_bat_dau, ngay_ket_thuc):
     ).first()
 
     if lich_da_tao:
-        return False, f"Đã tồn tại lịch từ {lich_da_tao.ngayBatDau.strftime('%d/%m/%Y')} đến {lich_da_tao.ngayKetThuc.strftime('%d/%m/%Y')})."
+        return False, f"Đã tồn tại lịch từ {lich_da_tao.ngayBatDau.strftime('%d/%m/%Y')} đến {lich_da_tao.ngayKetThuc.strftime('%d/%m/%Y')}."
 
     try:
         lich_moi = LichLamViec(ngayBatDau=ngay_bat_dau, ngayKetThuc=ngay_ket_thuc)

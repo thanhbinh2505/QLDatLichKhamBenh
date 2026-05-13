@@ -257,12 +257,12 @@ async function saveSchedule() {
     const endDateStr = document.getElementById('endDate').value;
 
     if (!startDateStr || !endDateStr) {
-        alert("Vui lòng chọn Từ ngày và Đến ngày!");
+        showToast("Vui lòng chọn Từ ngày và Đến ngày!", "error");
         return;
     }
 
     if (new Date(startDateStr) > new Date(endDateStr)) {
-        alert("Ngày bắt đầu không thể lớn hơn ngày kết thúc!");
+        showToast("Ngày bắt đầu không thể lớn hơn ngày kết thúc!", "error");
         return;
     }
 
@@ -288,7 +288,7 @@ async function saveSchedule() {
     }
 
     if (!hasData) {
-        alert("Lịch làm việc đang trống! Vui lòng phân công ít nhất 1 bác sĩ.");
+        showToast("Lịch làm việc đang trống! Vui lòng phân công ít nhất 1 bác sĩ.", "error");
         return;
     }
 
@@ -318,14 +318,13 @@ async function saveSchedule() {
         const result = await response.json();
 
         if (response.ok) {
-            alert("Đã lưu lịch làm việc thành công!");
-            window.location.reload();
+            showToast("Đã lưu lịch làm việc thành công!", "success");
+            setTimeout(() => window.location.reload(), 1500);
         } else {
-            alert("Có lỗi từ máy chủ: " + result.message);
+            showToast(result.message || "Có lỗi từ máy chủ!", "error");
         }
     } catch (error) {
-        console.error("Lỗi:", error);
-        alert("Không thể kết nối đến máy chủ!");
+        showToast("Không thể kết nối đến máy chủ!", "error");
     } finally {
         const btn = document.querySelector('button[onclick="saveSchedule()"]');
         if(btn) {
