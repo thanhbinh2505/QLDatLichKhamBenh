@@ -4,6 +4,8 @@ from app.dao import luu_phieu_dat_lich, get_khung_gio_bac_si, get_lich_da_dat, c
 from datetime import time, date, datetime, timedelta
 from app.models import User, UserRole, BenhNhan, BacSi, NgayLamViec, CaLam, PhanCa, LichLamViec, TrangThaiBacSi, PhieuDatLich, TrangThaiLichHen, KhungGio
 import pytest
+import concurrent.futures, threading
+from sqlalchemy.exc import IntegrityError
 
 @pytest.fixture
 def setup_db_for_booking(test_session):
@@ -38,8 +40,6 @@ def setup_db_for_booking(test_session):
 
     ngay_lam_viec = NgayLamViec(ngay=ngay_truc, id_LichLamViec=lich.id)
     test_session.add(ngay_lam_viec)
-
-    # Phân ca cho bác sĩ vào ca sáng ngày hôm đó
     phan_ca = PhanCa(id_BacSi=doctor.id, thuocNgay=ngay_truc, id_CaLam=ca.id, trangThai=TrangThaiBacSi.HoatDong)
     test_session.add(phan_ca)
     test_session.commit()
@@ -58,7 +58,6 @@ def setup_db_for_cancel(test_session):
     test_session.add_all([u_1, u_2, u_admin])
     test_session.flush()
 
-    # 2. Tạo Bệnh Nhân & Bác Sĩ
     patient = BenhNhan(user_id=u_1.id)
     test_session.add(patient)
 
@@ -68,7 +67,6 @@ def setup_db_for_cancel(test_session):
     doctor = BacSi(user_id=u_doctor.id, chuyenKhoa='Nhi Khoa')
     test_session.add(doctor)
 
-    # 3. Tạo Khung giờ mẫu
     ca = CaLam(tenCa='Ca Sáng', gioBatDau=time(8, 0), gioKetThuc=time(12, 0))
     test_session.add(ca)
     test_session.flush()
@@ -462,7 +460,6 @@ def test_khong_tim_thay_ho_so_benh_nhan(test_session, setup_db_for_booking):
     doctor_id = setup_db_for_booking['doctor_id']
     ngay_kham_str = setup_db_for_booking['ngay_kham']
 
-    # Dùng một ID giả mạo (không tồn tại trong Database)
     user_id = 999
 
     success, msg, info = luu_phieu_dat_lich(
@@ -579,7 +576,7 @@ def test_auto_cap_nhat_trang_thai_lich_kham(test_session, test_app, setup_db_for
         TrangThaiLichHen.Scheduled,
         ngay_kham
     )
-    mock_now = datetime.combine(ngay_kham, time(8, 35))
+    mock_now = datetime.combine(ngay_kham, time(8, 31))
     class MockDateTime(datetime):
         @classmethod
         def now(cls): return mock_now
@@ -650,8 +647,7 @@ def test_huy_lich_trong_gio_kham(test_session, setup_db_for_cancel, mocker):
 def test_huy_lich_duoi_1_tieng(test_session, setup_db_for_cancel, mocker):
     u_patient = setup_db_for_cancel['u_patient']
 
-    # Giả lập hiện tại là 07:30 (Chỉ còn 30 phút nữa là đến giờ khám 08:00)
-    mock_now = datetime.combine(date.today(), time(7, 30))
+    mock_now = datetime.combine(date.today(), time(7, 1))
     class MockDateTime(datetime):
         @classmethod
         def now(cls):
@@ -711,5 +707,37 @@ def test_admin_co_quyen_huy_lich(test_session, setup_db_for_cancel):
     assert phieu.status == TrangThaiLichHen.Cancelled
     assert phieu.user_huy_id == u_admin.id
 
+def test_dat_lich_dong_thoi(test_session, setup_db_for_booking, mocker):
+    doctor_id = setup_db_for_booking['doctor_id']
+    ngay_kham_str = setup_db_for_booking['ngay_kham']
+    gio_kham_str = '08:00 - 08:30'
+    patient_id = setup_db_for_booking['patient_id']
+    mocker.patch(
+        'app.dao.commit',
+        side_effect=IntegrityError("Mock Race Condition", params={}, orig=Exception())
+    )
+    success, msg, info = luu_phieu_dat_lich(doctor_id, ngay_kham_str, gio_kham_str, patient_id)
+    assert success is False
+    assert "Khung giờ này đã có người đặt" in msg
+    
+def test_admin_huy_lich_duoi_1_tieng(test_session, setup_db_for_cancel, mocker):
+    u_admin = setup_db_for_cancel['u_admin']
+    mock_now = datetime.combine(date.today(), time(7, 30))
+    class MockDateTime(datetime):
+        @classmethod
+        def now(cls):
+            return mock_now
+    mocker.patch('app.dao.datetime', MockDateTime)
 
+    phieu = phieu_dat_lich_test(
+        test_session,
+        setup_db_for_cancel,
+        TrangThaiLichHen.Scheduled,
+        mock_now.date()
+    )
+    success, msg = huy_lich_kham(phieu.id, u_admin)
+    assert success is True, "Admin phải được phép hủy lịch dưới 1 tiếng"
+    assert "Hủy lịch khám thành công" in msg
+    assert phieu.status == TrangThaiLichHen.Cancelled
+    assert phieu.user_huy_id == u_admin.id
 
