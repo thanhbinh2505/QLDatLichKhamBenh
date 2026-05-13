@@ -171,13 +171,10 @@ document.addEventListener("DOMContentLoaded", function() {
                 this.classList.add('active', 'border-primary', 'bg-blue-50', 'text-primary', 'font-bold');
                 this.classList.remove('border-transparent', 'text-slate-700');
 
-                // Lấy tên chuyên khoa mà người dùng vừa click (vd: "Thần Kinh")
                 const tenChuyenKhoa = this.innerText;
 
-                // Gọi API lọc danh sách bác sĩ
                 renderDoctors(this.getAttribute('data-spec'));
 
-                // GỌI HÀM CẬP NHẬT BREADCRUMB Ở ĐÂY
                 capNhatBreadcrumb(tenChuyenKhoa);
             });
         });
@@ -189,7 +186,6 @@ document.addEventListener("DOMContentLoaded", function() {
         const bcSpecialtyDivider = document.getElementById('bcSpecialtyDivider');
         const bcSpecialtyName = document.getElementById('bcSpecialtyName');
 
-        // Nếu có chọn chuyên khoa và không phải là "Tất cả chuyên khoa"
         if (tenChuyenKhoa && tenChuyenKhoa !== "Tất cả chuyên khoa") {
             bcDatLichText.classList.remove('text-[#28539e]', 'font-semibold');
 
@@ -197,7 +193,6 @@ document.addEventListener("DOMContentLoaded", function() {
             bcSpecialtyName.classList.remove('hidden');
             bcSpecialtyName.textContent = tenChuyenKhoa;
         } else {
-            // Nếu chọn "Tất cả chuyên khoa"
             bcDatLichText.classList.add('text-[#28539e]', 'font-semibold');
 
             bcSpecialtyDivider.classList.add('hidden');
