@@ -8,7 +8,6 @@ from app import app, dao, login
 from app.models import UserRole, BenhNhan, PhieuDatLich
 from app.decorator import role_required, anonymous_required
 import app.schemas as schemas
-from freezegun import freeze_time
 
 def register_routes(app):
     @app.route('/')
@@ -120,7 +119,6 @@ def register_routes(app):
 
     @app.route('/api/dat-lich', methods=['POST'])
     @role_required(UserRole.BENHNHAN)
-    @freeze_time("2026-05-14 12:01:24")  ####################################################
     def api_dat_lich():
         try:
             data = request.json
@@ -154,7 +152,6 @@ def register_routes(app):
                 "success": False,
                 "loai_thong_bao": "error",
                 "message": f"Hệ thống bận hoặc có lỗi: {str(e)}",
-                "server_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S") #############################
             }), 500
 
     @app.route('/hoso')
@@ -165,7 +162,6 @@ def register_routes(app):
 
     @app.route('/api/huy-lich/<int:phieu_id>', methods=['POST'])
     @role_required(UserRole.BENHNHAN)
-    #@freeze_time("2026-05-18 06:00:00")####################################################
     def huy_lich_api(phieu_id):
         success, message = dao.huy_lich_kham(phieu_id, current_user)
         phieu = PhieuDatLich.query.get(phieu_id)##########################################
