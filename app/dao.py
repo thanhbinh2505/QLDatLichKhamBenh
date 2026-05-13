@@ -264,11 +264,15 @@ def count_huy_lich(benhnhan_id):
     today = datetime.now().date()
     start_week = datetime.combine(today - timedelta(days=today.weekday()), datetime.min.time())
     end_week = datetime.combine(start_week + timedelta(days=6), datetime.max.time())
+    benh_nhan = BenhNhan.query.get(benhnhan_id)
+    if not benh_nhan:
+        return 0
     return PhieuDatLich.query.filter(
         PhieuDatLich.benhnhan_id == benhnhan_id,
         PhieuDatLich.status == TrangThaiLichHen.Cancelled,
         PhieuDatLich.cancelTime >=start_week,
-        PhieuDatLich.cancelTime <=end_week
+        PhieuDatLich.cancelTime <=end_week,
+        PhieuDatLich.user_huy_id == benh_nhan.user_id
     ).count()
 
 def huy_lich_kham(phieu_id, current_user):

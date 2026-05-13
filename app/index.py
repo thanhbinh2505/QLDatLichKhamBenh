@@ -94,13 +94,13 @@ def register_routes(app):
     @app.route('/api/doctors')
     def api_get_doctors():
         ds_bacsi_objects = dao.get_list_doctor()
-
         return jsonify([bs.to_dict() for bs in ds_bacsi_objects])
 
     @app.route('/dat-lich', methods=['GET'])
     @role_required([UserRole.BENHNHAN, UserRole.ADMIN])
     def dat_lich():
         return render_template('dat_lich.html')
+
     @app.route('/api/gio-kham-bac-si', methods=['GET'])
     @role_required([UserRole.BENHNHAN, UserRole.ADMIN])
     def api_gio_kham_bac_si():
@@ -160,7 +160,7 @@ def register_routes(app):
         return render_template('ho_so.html', benh_nhan=benh_nhan)
 
     @app.route('/api/huy-lich/<int:phieu_id>', methods=['POST'])
-    @role_required(UserRole.BENHNHAN)
+    @role_required([UserRole.BENHNHAN, UserRole.ADMIN])
     def huy_lich_api(phieu_id):
         success, message = dao.huy_lich_kham(phieu_id, current_user)
 
@@ -255,6 +255,7 @@ def register_routes(app):
                                ngay_bat_dau_goi_y=ngay_bat_dau_goi_y.strftime('%Y-%m-%d'),
                                ngay_ket_thuc_goi_y=ngay_ket_thuc_goi_y.strftime('%Y-%m-%d')
                                )
+
     @app.route('/admin/benh-nhan', methods=['GET'])
     @role_required(UserRole.ADMIN)
     def admin_benh_nhan():
@@ -268,12 +269,11 @@ def register_routes(app):
             benh_nhan = dao.get_benh_nhan_by_id(id)
             if not benh_nhan:
                 return jsonify({"success": False, "message": "Không tìm thấy bệnh nhân"}), 404
-
-            # Tận dụng hàm get_lich_da_dat đã có sẵn, truyền vào user_id của bệnh nhân
             ds_lich_kham = dao.get_lich_da_dat(user_id=benh_nhan.user_id)
             return jsonify({"success": True, "data": ds_lich_kham}), 200
         except Exception as e:
             return jsonify({"success": False, "message": str(e)}), 500
+
     @app.route('/api/admin/luu-lich-lam-viec', methods=['POST'])
     @role_required(UserRole.ADMIN)
     def api_tao_lich_moi():
