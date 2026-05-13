@@ -48,8 +48,13 @@ class RegisterSchema(Schema):
 
     @validates('ngaysinh')
     def validate_ngaysinh(self, value, **kwargs):
-        if value and value >= date.today():
-            raise ValidationError("Ngày sinh không được là hôm nay hoặc tương lai!")
+        if value:
+            today = date.today()
+            if value >= today:
+                raise ValidationError("Ngày sinh không được là hôm nay hoặc tương lai!")
+            min_date = today.replace(year=today.year - 150)
+            if value < min_date:
+                raise ValidationError("Ngày sinh quá xa trong quá khứ!")
 
 class StartEndDateSchema(Schema):
     ngayBatDau = fields.Date(required=True, error_messages={
@@ -120,6 +125,8 @@ class LuuLichLamViecSchema(Schema):
         if 'ngayBatDau' in data and 'ngayKetThuc' in data:
             if data['ngayKetThuc'] < data['ngayBatDau']:
                 raise ValidationError("Ngày kết thúc không thể nhỏ hơn ngày bắt đầu.")
+            if (data['ngayKetThuc'] - data['ngayBatDau']).days < 7:
+                raise ValidationError("Tạo lịch làm việc phải ít nhất 7 ngày.")
 
 class TaoNghiPhepSchema(Schema):
     bacsi_id = fields.Int(required=True, error_messages={"required": "Vui lòng cung cấp ID bác sĩ."})
