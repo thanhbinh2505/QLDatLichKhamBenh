@@ -5,7 +5,7 @@ from flask_login import login_user, logout_user, current_user
 from marshmallow import ValidationError
 
 from app import app, dao, login
-from app.models import UserRole, BenhNhan
+from app.models import UserRole, BenhNhan, PhieuDatLich
 from app.decorator import role_required, anonymous_required
 import app.schemas as schemas
 
@@ -143,14 +143,15 @@ def register_routes(app):
                 "success": thanh_cong,
                 "loai_thong_bao": 'success' if thanh_cong else 'error',
                 "message": thong_diep,
-                "booking_info": info
+                "booking_info": info,
+                "server_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S") ############################
             }), 200
 
         except Exception as e:
             return jsonify({
                 "success": False,
                 "loai_thong_bao": "error",
-                "message": f"Hệ thống bận hoặc có lỗi: {str(e)}"
+                "message": f"Hệ thống bận hoặc có lỗi: {str(e)}",
             }), 500
 
     @app.route('/hoso')
@@ -163,16 +164,20 @@ def register_routes(app):
     @role_required([UserRole.BENHNHAN, UserRole.ADMIN])
     def huy_lich_api(phieu_id):
         success, message = dao.huy_lich_kham(phieu_id, current_user)
-
+        phieu = PhieuDatLich.query.get(phieu_id)##########################################
         if success:
             return jsonify({
                 "success": True,
-                "message": message
+                "message": message,
+                "current_status": phieu.status.value if phieu else None,  ############################
+                "server_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }), 200
         else:
             return jsonify({
                 "success": False,
-                "message": message
+                "message": message,
+                "current_status": phieu.status.value if phieu else None,  ############################
+                "server_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")##############################
             }), 400
 
     @app.route('/api/ho-so/lich-kham')

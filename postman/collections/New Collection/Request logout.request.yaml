@@ -1,0 +1,5 @@
+$kind: http-request
+name: Request logout
+url: http://127.0.0.1:5000/logout
+method: POST
+order: 1777739801160
