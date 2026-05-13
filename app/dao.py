@@ -486,13 +486,13 @@ def tao_ngay_lam_viec(ngay, id_lichlamviec):
 
 def tao_phan_ca(id_bacsi, id_calam, thuoc_ngay):
     try:
-        if not BacSi.query.get(id_bacsi):
+        if not db.session.get(BacSi, id_bacsi):
             return False, "ID bác sĩ không tồn tại!"
 
-        if not CaLam.query.get(id_calam):
+        if not db.session.get(CaLam, id_calam):
             return False, "ID ca làm không tồn tại!"
 
-        if not NgayLamViec.query.get(thuoc_ngay):
+        if not db.session.get(NgayLamViec, thuoc_ngay):
             return False, "Ngày làm việc không tồn tại!"
 
         pc_ton_tai = PhanCa.query.filter(
