@@ -270,7 +270,8 @@ tomorrow = date.today() + timedelta(days=1)
 @pytest.mark.parametrize('ngaysinh, err_msg', [
    ('2005/03/10', 'Ngày sinh không hợp lệ!'),
    ('nfjhfuhf', 'Ngày sinh không hợp lệ!'),
-    (tomorrow.strftime('%Y-%m-%d'), 'Ngày sinh không được là hôm nay hoặc tương lai!')
+    (tomorrow.strftime('%Y-%m-%d'), 'Ngày sinh không được là hôm nay hoặc tương lai!'),
+    (date.today().replace(year=date.today().year - 151).strftime('%Y-%m-%d'), 'Ngày sinh quá xa trong quá khứ!')
 ])
 def test_register_ngaysinh_invalid(test_app, test_client, ngaysinh, err_msg, mocker):
     data = {
