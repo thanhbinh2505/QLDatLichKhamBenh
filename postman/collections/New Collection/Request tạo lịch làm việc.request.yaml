@@ -1,0 +1,36 @@
+$kind: http-request
+name: Request tạo lịch làm việc
+url: http://127.0.0.1:5000/api/admin/luu-lich-lam-viec
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"ngayBatDau\": \"2026-05-20\",\r
+
+    \  \"ngayKetThuc\": \"2026-05-26\",\r
+
+    \  \"lichTuan\": {\r
+
+    \    \"T2\": {\r
+
+    \      \"1\": [1] \r
+
+    \    },\r
+
+    \    \"T3\": {\r
+
+    \      \"1\": [1, 2]\r
+
+    \    },\r
+
+    \    \"T6\": {\r
+
+    \      \"2\": [2]\r
+
+    \    }\r
+
+    \  }\r
+
+    }"
+order: 4490902448121668
