@@ -1,4 +1,4 @@
-from test_base import test_session, test_app
+from .test_base import test_session, test_app
 from app.models import User
 from app.dao import them_benhnhan, get_user_by_email_username
 import pytest

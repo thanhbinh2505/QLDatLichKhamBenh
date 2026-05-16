@@ -1,4 +1,4 @@
-from test_base import test_session, test_app, test_client
+from .test_base import test_session, test_app, test_client
 from app.models import User, BenhNhan, UserRole
 from app.dao import them_benhnhan
 from datetime import datetime, date, timedelta

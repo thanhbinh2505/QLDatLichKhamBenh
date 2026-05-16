@@ -278,16 +278,10 @@ def huy_lich_kham(phieu_id, current_user):
         return False, "Lịch khám đã hoàn thành, không thể hủy."
     if phieu.status == TrangThaiLichHen.Cancelled:
         return False, "Lịch khám đã được hủy trước đó."
-    ngay_gio_kham = datetime.combine(phieu.ngayKham, phieu.khung_gio.startTime)
-    time_con_lai = ngay_gio_kham - datetime.now()
-    if current_user.role != UserRole.ADMIN:
-        if time_con_lai<=timedelta(seconds=0):
-            return False,"Đang trong giờ khám. Không thể hủy lịch khám."
-        if time_con_lai<=timedelta(hours=1):
-            return False, "Không thể hủy lịch vì còn dưới 1 giờ trước giờ khám."
     date_time_start = datetime.combine(phieu.ngayKham, phieu.khung_gio.startTime)
     date_time_end = datetime.combine(phieu.ngayKham, phieu.khung_gio.endTime)
     date_time_now = datetime.now()
+
     if date_time_now > date_time_end:
         try:
             phieu.status = TrangThaiLichHen.Completed
@@ -296,12 +290,11 @@ def huy_lich_kham(phieu_id, current_user):
             rollback()
         return False, "Lịch khám đã hoàn thành, không thể hủy"
 
-    if date_time_start <= date_time_now <= date_time_end:
-        return False,"Đang trong giờ khám. Không thể hủy lịch khám."
-    if (date_time_start-date_time_now) < timedelta(minutes=60):
-        return False, "Không thể hủy lịch vì còn dưới 1 giờ trước giờ khám."
-
-
+    if current_user.role != UserRole.ADMIN:
+        if date_time_start <= date_time_now <= date_time_end:
+            return False, "Đang trong giờ khám. Không thể hủy lịch khám."
+        if (date_time_start - date_time_now) < timedelta(minutes=60):
+            return False, "Không thể hủy lịch vì còn dưới 1 giờ trước giờ khám."
     try:
         phieu.status = TrangThaiLichHen.Cancelled
         phieu.user_huy_id = current_user.id
