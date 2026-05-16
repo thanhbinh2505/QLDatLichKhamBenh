@@ -27,4 +27,4 @@ jobs:
       env:
         PYTHONPATH: .
       run: |
-        pytest test/unit-test/ -v
+        pytest test/unit_test/ -v
