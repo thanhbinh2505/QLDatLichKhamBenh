@@ -1,5 +1,5 @@
 from sqlalchemy.testing.exclusions import succeeds_if
-from test_base import test_session, test_app, test_client
+from test.unit_test.test_base import test_session, test_app, test_client
 from app.dao import luu_phieu_dat_lich, get_khung_gio_bac_si, get_lich_da_dat, count_huy_lich, huy_lich_kham, cap_nhat_trang_thai_lich_kham
 from datetime import time, date, datetime, timedelta
 from app.models import User, UserRole, BenhNhan, BacSi, NgayLamViec, CaLam, PhanCa, LichLamViec, TrangThaiBacSi, PhieuDatLich, TrangThaiLichHen, KhungGio
@@ -16,14 +16,12 @@ def setup_db_for_booking(test_session):
     patient = BenhNhan(user_id=u_patient.id)
     test_session.add(patient)
 
-    # 2. Tạo Bác sĩ
     u_doc = User(username='bs1', hoTen='Bác Sĩ 1', email='bs1@gmail.com', gioiTinh=True, role=UserRole.BACSI, password='Abcd123@')
     test_session.add(u_doc)
     test_session.flush()
     doctor = BacSi(user_id=u_doc.id, chuyenKhoa='Nhi Khoa')
     test_session.add(doctor)
 
-    # 3. Tạo Ca làm việc (Ca Sáng)
     ca = CaLam(tenCa='Ca Sáng', gioBatDau=time(8,0), gioKetThuc=time(12,0))
     test_session.add(ca)
     test_session.flush()
@@ -33,7 +31,7 @@ def setup_db_for_booking(test_session):
     kg3 = KhungGio(startTime=time(9, 0), endTime=time(9, 30), calam_id=ca.id)
     test_session.add_all([kg1, kg2, kg3])
 
-    ngay_truc = date(2026, 5, 15)
+    ngay_truc = date(2026, 5, 30)
     lich = LichLamViec(ngayBatDau=ngay_truc, ngayKetThuc=ngay_truc)
     test_session.add(lich)
     test_session.flush()
@@ -47,7 +45,7 @@ def setup_db_for_booking(test_session):
     return {
         'patient_id': u_patient.id,
         'doctor_id': doctor.id,
-        'ngay_kham': '2026-05-15'
+        'ngay_kham': '2026-05-30'
     }
 
 @pytest.fixture
@@ -79,19 +77,21 @@ def setup_db_for_cancel(test_session):
         'u_patient': u_1,
         'u_other': u_2,
         'u_admin': u_admin,
+        'u_doctor': u_doctor,
         'patient_id': patient.id,
         'doctor_id': doctor.id,
         'khunggio_id': kg.id
     }
 
-def phieu_dat_lich_test(test_session, data, status, ngay_kham_str, cancelTime = None):
+def phieu_dat_lich_test(test_session, data, status, ngay_kham_str, cancelTime = None, user_huy_id = None):
     phieu = PhieuDatLich(
         benhnhan_id = data['patient_id'],
         bacsi_id = data['doctor_id'],
         khunggio_id = data['khunggio_id'],
         ngayKham = ngay_kham_str,
         status = status,
-        cancelTime = cancelTime
+        cancelTime = cancelTime,
+        user_huy_id=user_huy_id
     )
     test_session.add(phieu)
     test_session.commit()
@@ -235,7 +235,7 @@ def test_api_ho_so_lich_kham(test_client, test_session, setup_db_for_booking, mo
     assert res.status_code == 200
     assert len(data) == 1
     assert data[0]['status'] == "Scheduled"
-    assert data[0]['ngay_kham_str'] == "15/05/2026"
+    assert data[0]['ngay_kham_str'] == "30/05/2026"
 
 def test_lay_gio_kham_thanh_cong(test_client, test_session,mocker,setup_db_for_booking):
     class FakeUser:
@@ -416,7 +416,7 @@ def test_bi_khoa_dat_lich_24h(test_session, setup_db_for_booking):
 def test_khung_gio_da_qua_trong_ngay(test_session, setup_db_for_booking, mocker):
     doctor_id = setup_db_for_booking['doctor_id']
     patient_id = setup_db_for_booking['patient_id']
-    mock_now = datetime(2026, 4, 30, 8, 1, 0)
+    mock_now = datetime(2026, 4, 30, 8, 0, 0)
 
     class MockDateTime(datetime):
         @classmethod
@@ -672,11 +672,11 @@ def test_huy_lich_qua_3_lan(test_session, setup_db_for_cancel, mocker):
 
 def test_count_huy_lich(test_session, setup_db_for_cancel):
     patient_id = setup_db_for_cancel['patient_id']
-    phieu_dat_lich_test(test_session, setup_db_for_cancel, TrangThaiLichHen.Cancelled, datetime.now().date(), cancelTime=datetime.now())
-    phieu_dat_lich_test(test_session, setup_db_for_cancel, TrangThaiLichHen.Cancelled, datetime.now().date(), cancelTime=datetime.now())
+    phieu_dat_lich_test(test_session, setup_db_for_cancel, TrangThaiLichHen.Cancelled, datetime.now().date(), cancelTime=datetime.now(), user_huy_id=patient_id)
+    phieu_dat_lich_test(test_session, setup_db_for_cancel, TrangThaiLichHen.Cancelled, datetime.now().date(), cancelTime=datetime.now(), user_huy_id=patient_id)
 
     thang_truoc = datetime.now() - timedelta(days=30)
-    phieu_dat_lich_test(test_session, setup_db_for_cancel, TrangThaiLichHen.Cancelled, datetime.now().date(), cancelTime=thang_truoc)
+    phieu_dat_lich_test(test_session, setup_db_for_cancel, TrangThaiLichHen.Cancelled, datetime.now().date(), cancelTime=thang_truoc, user_huy_id=patient_id)
 
     so_lan_huy = count_huy_lich(patient_id)
     assert so_lan_huy == 2
