@@ -1,5 +1,5 @@
 from sqlalchemy.testing.exclusions import succeeds_if
-from test.unit_test.test_base import test_session, test_app, test_client
+from .test_base import test_session, test_app, test_client
 from app.dao import luu_phieu_dat_lich, get_khung_gio_bac_si, get_lich_da_dat, count_huy_lich, huy_lich_kham, cap_nhat_trang_thai_lich_kham
 from datetime import time, date, datetime, timedelta
 from app.models import User, UserRole, BenhNhan, BacSi, NgayLamViec, CaLam, PhanCa, LichLamViec, TrangThaiBacSi, PhieuDatLich, TrangThaiLichHen, KhungGio

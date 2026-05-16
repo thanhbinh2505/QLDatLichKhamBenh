@@ -2,7 +2,7 @@ import pytest
 from datetime import date, timedelta, time, datetime
 from app import dao
 from app.models import LichLamViec, NgayLamViec, PhanCa, BacSi, CaLam, User, UserRole, TrangThaiBacSi, NgayNghiBacSi, TrangThaiDuyet, BenhNhan
-from test.unit_test.test_base import test_session, test_app, test_client
+from .test_base import test_session, test_app, test_client
 from unittest.mock import MagicMock, call
 
 
